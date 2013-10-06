@@ -1,5 +1,30 @@
+import tok
+
 #
 #   6502 assembler
+#
+
+#
+#   Opcodes and addressing modes
+#
+#       (empty)     impl
+#       #n          immed
+#       nn          abs
+#       n           zp
+#       nn,x        absx
+#       nn,y        absy
+#       a           implied
+#       (nn)        ind
+#       expr        rel
+#       n,x         zpx
+#       n,y         zpy
+#       (n,x)       indx
+#       (n),y       indy
+#
+#   optimize, whenever possible
+#       ABS to ZP
+#       ABSX to ZPX
+#       ABSY to ZPY
 #
 
 gOps = {
@@ -62,25 +87,21 @@ gOps = {
 }
 
 
-def fn_org():
+def fn_org( tokens, tokenValue, tokenIndex ):
     pass
 
-def fn_equ():
+def fn_dc( tokens, tokenValue, tokenIndex ):
     pass
 
-def fn_dc():
+def fn_dw( tokens, tokenValue, tokenIndex ):
     pass
 
-def fn_dw():
-    pass
-
-def fn_include():
+def fn_include( tokens, tokenValue, tokenIndex ):
     pass
 
 
 gPsuedoOps = {
-    'org':     fn_org,
-    'equ':      fn_equ,
+    'org':      fn_org,
     'db':       fn_dc,
     'dw':       fn_dw,
     'include':  fn_include
@@ -113,7 +134,7 @@ def set( label, value ):
         gSymbolState[scope] = {}
 
     gSymbol[scope][label] = value
-    gSymbolState[scope][label] = true
+    gSymbolState[scope][label] = True
 
 
 def isDefined( label ):
@@ -135,56 +156,67 @@ def get( label ):
         #xxx mark referenced
         return gSymbol[label][label]
 
-
-gTokens = [
-    '>=', '<=', '<<', '>>', '!=', '==',
-    '~', '!', '@', '#', '$', '%', '^', '&',
-    '*', '(', ')', '_', '+', '-', '=', '[',
-    ']', '{', '}', ':', ';', ',',
-    '<', '.', '>', '/', '?', '|'
-    ]
-
-def tokenize( s ):
-
-    def skipspace( s, i ):
-        while i < len( s) and (s[i] == ' ' or s[i] == '\t'):
-            i = i + 1
-
-    def test( s, prefix ):
-        #xxx
-        pass
-
-    tokens = []
-    tokenValues = []
-    i = 0
-    while i < len( s ):
-        i = skipspace( s, i )
-
-    return tokens, tokenValues
+        
+def eval( tokens, tokenValues, tokenIndex ):
+    return None, tokenValues[tokenIndex], tokenIndex + 1        #xxx
+    pass
 
 
-def eval( toks ):
-    # evaluate expression
+def assembleInstruction( op, tokens, tokenvalues, tokenIndex ):
+    # parse addressing mode
     pass
 
 
 def assembleLine( line ):
-    tokens, tokenValues = tokenize( line )
+    errorString, leadingWhitespace, tokens, tokenValues = tok.tokenize( line )
 
+    if errorString:
+        return errorString
+
+    #
+    #   SYMBOL = VALUE
+    #
+    if len(tokens) >= 3 and tokens[0] == tok.SYMBOL and tokens[1] == '=':
+        errorString, value, tokenIndex = eval( tokens, tokenValues, 2 )
+        if errorString:
+            return errorString
+        if tokenIndex < len(tokens):
+            return "Bad expression (extra gunk)"
+        set( tokenValues[0], value )
+        return
+        
+    #
+    #   handle SYMBOL: at start of line
+    #   NOTE: could enforce leadingWhitespace, but we have a ':'
+    #   instead of that.
+    #
     tokenIndex = 0
-
-    #   xxx handle detection of leading whitespace
-    
-    #   handle label
-    #   symbol :
-    if tokenIndex + 2 <= len(tokens) >= 2 and tokens[tokenIndex] == IDENTIFIER and tokens[tokenIndex + 1] == ':':
-        define( tokenValues[tokenIndex], gLoc )
+    if len(tokens) >= 2 and tokens[0] == tok.SYMBOL and tokens[1] == ':':
+        set( tokenValues[tokenIndex], gLoc )
         tokenIndex = tokenIndex + 2
 
-    #   handle equate
+    #
+    #   handle ops
+    #
+    if tokenIndex < len(tokens) and tokens[tokenIndex] == tok.SYMBOL:
 
-    #   handle opcode or mnemonic
+        op = tokens[tokenIndex]
+        if op in gPsuedoOps:
+            errorString = gPsuedoOps[op]( tokens, tokenValues, tokenIndex )
+        elif op in gOps:
+            assembleInstruction( op, tokens, tokenValues, tokenIndex + 1 )
+        else:
+            errorString = str.format( 'Unknown op: {0}', op )
 
-    # handle label
-    # find mnemonic and dispatch
-    pass
+    return errorString
+
+
+def test():
+    assert assembleLine( 'label:' ) == None
+    asert assembleLine( '.label:' ) == None
+    assert assembleLine( 'symbol = 42' ) == None
+
+    # more...
+
+if __name__ == '__main__':
+    test()

@@ -1,0 +1,12 @@
+TODO
+
+[]  parse expressions
+
+[]  parse addressing modes
+[]  assemble instruction
+[]  psuedo-ops
+[]  listing output
+[]  fixups
+        []  rememberFixup
+        []  applyFixes
+

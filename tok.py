@@ -1,3 +1,7 @@
+#
+#   Quick tokenizer for an assembler
+#
+
 import sys
 import re
 
@@ -69,7 +73,7 @@ def digitValue( s ):
 
 
 def isSymbolStart( s ):
-    return (s >= 'a' and s <= 'z') or (s >= 'A' and s <= 'Z') or s == '_'
+    return (s >= 'a' and s <= 'z') or (s >= 'A' and s <= 'Z') or s == '_' or s == '.'
 
 
 def isSymbolContinuation ( s ):

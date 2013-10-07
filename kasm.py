@@ -1,8 +1,8 @@
-import tok
-
 #
 #   6502 assembler
 #
+import tok
+
 
 #
 #   Opcodes and addressing modes
@@ -27,63 +27,82 @@ import tok
 #       ABSY to ZPY
 #
 
+IMPLIED = 0
+IMMED = 1
+ABS = 2
+ZP = 3
+ABSX = 4
+ABSY = 5
+IND = 6
+REL = 7
+ZPX = 8
+ZPY = 9
+INDX = 10
+INDY = 11
+
+#   without actual values, these are ambiguous
+UNDECIDED_X = 12        # ABSX / ZPX
+UNDECIDED_Y = 13        # ABSY / ZPY
+UNDECIDED = 14          # ABS / ZP / REL
+
+
 gOps = {
-    'adc': {  'immed': 0x69, 'abs': 0x6d, 'zp': 0x65, 'indx': 0x61, 'indy': 0x71, 'zpx': 0x75, 'absx': 0x7d, 'absy': 0x79 },
-    'and': {  'immed': 0x29, 'abs': 0x2d, 'zp': 0x25, 'indx': 0x21, 'indy': 0x31, 'zpx': 0x35, 'absx': 0x3d, 'absy': 0x39 },
-    'asl': {  'abs': 0x0e, 'zp': 0x06, 'impl': 0x0a, 'zpx': 0x16, 'absx': 0x1e },
-    'bcc': {  'rel': 0x90 },
-    'bcs': {  'rel': 0xb0 },
-    'beq': {  'rel': 0xf0 },
-    'bne': {  'rel': 0xd0 },
-    'bmi': {  'rel': 0x30 },
-    'bpl': {  'rel': 0x10 },
-    'bvc': {  'rel': 0x50 },
-    'bvs': {  'rel': 0x70 },
-    'bit': {  'abs': 0x2c, 'zp': 0x24 },
-    'brk': {  'impl': 0x00 },
-    'clc': {  'impl': 0x18 },
-    'cld': {  'impl': 0xd8 },
-    'cli': {  'impl': 0x58 },
-    'clv': {  'impl': 0xb8 },
-    'cmp': {  'immed': 0xc9, 'abs': 0xcd, 'zp': 0xc5, 'indx': 0xc1, 'indy': 0xd1, 'zpx': 0xd5, 'absx': 0xdd, 'absy': 0xd9 },
-    'cpx': {  'immed': 0xe0, 'abs': 0xec, 'zp': 0xe4 },
-    'cpy': {  'immed': 0xc0, 'abs': 0xcc, 'zp': 0xc4 },
-    'dec': {  'abs': 0xce, 'zp': 0xc6, 'zpx': 0xd6, 'absx': 0xde },
-    'dex': {  'impl': 0xca },
-    'dey': {  'impl': 0x88 },
-    'eor': {  'immed': 0x49, 'abs': 0x4d, 'zp': 0x45, 'indx': 0x41, 'indy': 0x51, 'zpx': 0x55, 'absx': 0x5d, 'absy': 0x59 },
-    'inc': {  'abs': 0xee, 'zp': 0xe6, 'zpx': 0xf6, 'absx': 0xfe },
-    'inx': {  'impl': 0xe8 },
-    'iny': {  'impl': 0xc8 },
-    'jmp': {  'abs': 0x4c, 'ind': 0x6c },
-    'jsr': {  'abs': 0x20 },
-    'lda': {  'immed': 0xa9, 'abs': 0xad, 'zp': 0xa5, 'indx': 0xa1, 'indy': 0xb1, 'zpx': 0xb5, 'absx': 0xbd, 'absy': 0xb9 },
-    'ldx': {  'immed': 0xa2, 'abs': 0xae, 'zp': 0xa6, 'absy': 0xbe, 'zpy': 0xb6 },
-    'ldy': {  'immed': 0xa0, 'abs': 0xac, 'zp': 0xa4, 'zpx': 0xb4, 'absx': 0xbc },
-    'lsr': {  'abs': 0x4e, 'zp': 0x46, 'impl': 0x4a, 'zpx': 0x56, 'absx': 0x5e },
-    'nop': {  'impl': 0xea },
-    'ora': {  'immed': 0x09, 'abs': 0x0d, 'zp': 0x05, 'indx': 0x01, 'indy': 0x11, 'zpx': 0x15, 'absx': 0x1d, 'absy': 0x19 },
-    'pha': {  'impl': 0x48 },
-    'php': {  'impl': 0x08 },
-    'pla': {  'impl': 0x68 },
-    'plp': {  'impl': 0x28 },
-    'rol': {  'abs': 0x2e, 'zp': 0x26, 'impl': 0x2a, 'zpx': 0x36, 'absx': 0x3e },
-    'ror': {  'abs': 0x6e, 'zp': 0x66, 'impl': 0x6a, 'zpx': 0x76, 'absx': 0x7e },
-    'rti': {  'impl': 0x40 },
-    'rts': {  'impl': 0x60 },
-    'sbc': {  'immed': 0xe9, 'abs': 0xed, 'zp': 0xe5, 'indx': 0xe1, 'indy': 0xf1, 'zpx': 0xf5, 'absx': 0xfd, 'absy': 0xf9 },
-    'sec': {  'impl': 0x38 },
-    'sed': {  'impl': 0xf8 },
-    'sei': {  'impl': 0x78 },
-    'sta': {  'abs': 0x8d, 'zp': 0x85, 'indx': 0x81, 'indy': 0x91, 'zpx': 0x95, 'absx': 0x9d, 'absy': 0x99 },
-    'stx': {  'abs': 0x8e, 'zp': 0x86, 'zpy': 0x96 },
-    'sty': {  'abs': 0x8c, 'zp': 0x84, 'zpx': 0x94 },
-    'tax': {  'impl': 0xaa },
-    'tay': {  'impl': 0xa8 },
-    'tsx': {  'impl': 0xba },
-    'txa': {  'impl': 0x8a },
-    'txs': {  'impl': 0x9a },
-    'tya': {  'impl': 0x98 }
+    'adc': {  IMMED: 0x69, ABS: 0x6d, ZP: 0x65, INDX: 0x61, INDY: 0x71, ZPX: 0x75, ABSX: 0x7d, ABSY: 0x79 },
+    'and': {  IMMED: 0x29, ABS: 0x2d, ZP: 0x25, INDX: 0x21, INDY: 0x31, ZPX: 0x35, ABSX: 0x3d, ABSY: 0x39 },
+    'asl': {  ABS: 0x0e, ZP: 0x06, IMPLIED: 0x0a, ZPX: 0x16, ABSX: 0x1e },
+    'bcc': {  REL: 0x90 },
+    'bcs': {  REL: 0xb0 },
+    'beq': {  REL: 0xf0 },
+    'bne': {  REL: 0xd0 },
+    'bmi': {  REL: 0x30 },
+    'bpl': {  REL: 0x10 },
+    'bvc': {  REL: 0x50 },
+    'bvs': {  REL: 0x70 },
+    'bit': {  ABS: 0x2c, ZP: 0x24 },
+    'brk': {  IMPLIED: 0x00 },
+    'clc': {  IMPLIED: 0x18 },
+    'cld': {  IMPLIED: 0xd8 },
+    'cli': {  IMPLIED: 0x58 },
+    'clv': {  IMPLIED: 0xb8 },
+    'cmp': {  IMMED: 0xc9, ABS: 0xcd, ZP: 0xc5, INDX: 0xc1, INDY: 0xd1, ZPX: 0xd5, ABSX: 0xdd, ABSY: 0xd9 },
+    'cpx': {  IMMED: 0xe0, ABS: 0xec, ZP: 0xe4 },
+    'cpy': {  IMMED: 0xc0, ABS: 0xcc, ZP: 0xc4 },
+    'dec': {  ABS: 0xce, ZP: 0xc6, ZPX: 0xd6, ABSX: 0xde },
+    'dex': {  IMPLIED: 0xca },
+    'dey': {  IMPLIED: 0x88 },
+    'eor': {  IMMED: 0x49, ABS: 0x4d, ZP: 0x45, INDX: 0x41, INDY: 0x51, ZPX: 0x55, ABSX: 0x5d, ABSY: 0x59 },
+    'inc': {  ABS: 0xee, ZP: 0xe6, ZPX: 0xf6, ABSX: 0xfe },
+    'inx': {  IMPLIED: 0xe8 },
+    'iny': {  IMPLIED: 0xc8 },
+    'jmp': {  ABS: 0x4c, IND: 0x6c },
+    'jsr': {  ABS: 0x20 },
+    'lda': {  IMMED: 0xa9, ABS: 0xad, ZP: 0xa5, INDX: 0xa1, INDY: 0xb1, ZPX: 0xb5, ABSX: 0xbd, ABSY: 0xb9 },
+    'ldx': {  IMMED: 0xa2, ABS: 0xae, ZP: 0xa6, ABSY: 0xbe, ZPY: 0xb6 },
+    'ldy': {  IMMED: 0xa0, ABS: 0xac, ZP: 0xa4, ZPX: 0xb4, ABSX: 0xbc },
+    'lsr': {  ABS: 0x4e, ZP: 0x46, IMPLIED: 0x4a, ZPX: 0x56, ABSX: 0x5e },
+    'nop': {  IMPLIED: 0xea },
+    'ora': {  IMMED: 0x09, ABS: 0x0d, ZP: 0x05, INDX: 0x01, INDY: 0x11, ZPX: 0x15, ABSX: 0x1d, ABSY: 0x19 },
+    'pha': {  IMPLIED: 0x48 },
+    'php': {  IMPLIED: 0x08 },
+    'pla': {  IMPLIED: 0x68 },
+    'plp': {  IMPLIED: 0x28 },
+    'rol': {  ABS: 0x2e, ZP: 0x26, IMPLIED: 0x2a, ZPX: 0x36, ABSX: 0x3e },
+    'ror': {  ABS: 0x6e, ZP: 0x66, IMPLIED: 0x6a, ZPX: 0x76, ABSX: 0x7e },
+    'rti': {  IMPLIED: 0x40 },
+    'rts': {  IMPLIED: 0x60 },
+    'sbc': {  IMMED: 0xe9, ABS: 0xed, ZP: 0xe5, INDX: 0xe1, INDY: 0xf1, ZPX: 0xf5, ABSX: 0xfd, ABSY: 0xf9 },
+    'sec': {  IMPLIED: 0x38 },
+    'sed': {  IMPLIED: 0xf8 },
+    'sei': {  IMPLIED: 0x78 },
+    'sta': {  ABS: 0x8d, ZP: 0x85, INDX: 0x81, INDY: 0x91, ZPX: 0x95, ABSX: 0x9d, ABSY: 0x99 },
+    'stx': {  ABS: 0x8e, ZP: 0x86, ZPY: 0x96 },
+    'sty': {  ABS: 0x8c, ZP: 0x84, ZPX: 0x94 },
+    'tax': {  IMPLIED: 0xaa },
+    'tay': {  IMPLIED: 0xa8 },
+    'tsx': {  IMPLIED: 0xba },
+    'txa': {  IMPLIED: 0x8a },
+    'txs': {  IMPLIED: 0x9a },
+    'tya': {  IMPLIED: 0x98 }
 }
 
 
@@ -108,6 +127,10 @@ gPsuedoOps = {
 }
 
 
+
+#   ----------------------------------------------------------------
+#   Symbol management
+#   ----------------------------------------------------------------
 
 #
 #   { '<name>':   { '<name>': value, '.subname': value ... } ... }
@@ -156,15 +179,112 @@ def get( label ):
         #xxx mark referenced
         return gSymbol[label][label]
 
-        
+
+#
+#   eval ==> errorString, value, valueAttrs, tokenIndex
+#
 def eval( tokens, tokenValues, tokenIndex ):
-    return None, tokenValues[tokenIndex], tokenIndex + 1        #xxx
+    return None, tokenValues[tokenIndex], 0, tokenIndex + 1        #xxx
     pass
 
 
-def assembleInstruction( op, tokens, tokenvalues, tokenIndex ):
-    # parse addressing mode
+#
+#   parseAddressingMode ==> errorString, addrMode, value, valueAttrs, tokenIndex
+#
+
+def parseAddressingMode( tokens, tokenValues, tokenIndex ):
+
+    if tokenIndex >= len(tokens):
+        return None, IMPLIED, None, tokenIndex
+
+    if tokens[tokenIndex] == '#':
+        errorString, value, valueAttrs, tokenIndex = eval( tokens, tokenValues, tokenIndex + 1 )
+        return errorString, IMMED, value, valueAttrs, tokenIndex
+
+    #
+    #   (n)
+    #   (nn)
+    #   (n,x)
+    #   (n),y
+    #
+    if tokens[tokenIndex] == '(':
+        errorString, value, valueAttrs, tokenIndex = eval( tokens, tokenValues, tokenIndex + 1 )
+        if errorString:
+            return errorString, None, None, None, tokenIndex
+
+        if tokenIndex >= len(tokens):
+            return "bad addressing mode (no close-parenthesis)"
+
+        #   (expr,x)
+        if tokens[tokenIndex] == ',':
+            if tokenIndex + 2 < len(tokens) and tokens[tokenIndex+1] == tok.SYMBOL and tokenValues[tokenIndex+1].lower() == 'x' and tokens[tokenIndex + 2] == ')':
+                return None, INDX, value, valueAttrs, tokenIndex + 2
+            else:
+                return "bad addressing mode (started out looking like indirect-x)", None, None, None, tokenIndex
+
+        elif tokens[tokenIndex] == ')':
+
+            tokenIndex = tokenIndex + 1
+
+            #
+            #   (expr),y
+            #   (expr)
+            #
+            if tokenIndex + 2 < len(tokens) and tokens[tokenIndex] == ',' and tokens[tokenIndex+1] == tok.SYMBOL and tokenValues[tokenIndex+1].lower() == 'y':
+                return None, INDY, value, valueAttrs, tokenIndex + 2
+            else:
+                return None, IND, value, valueAttrs, tokenIndex
+
+        else:
+            return "bad addressing mode (started out looking indirect, but fizzled)", None, None, None, tokenIndex
+
+    #
+    #   nn
+    #   n
+    #   rel
+    #
+    #   n,x
+    #   n,y
+    #
+
+    errorString, value, valueAttrs, tokenIndex = eval( tokens, tokenValues, tokenIndex )
+    if errorString:
+        return errorString, None, None, None, tokenIndex
+
+    if tokenIndex < len(tokens) and tokens[tokenIndex] == ',':
+        tokenIndex = tokenIndex + 1
+        if tokens[tokenIndex] == tok.SYMBOL:
+            if tokenValues[tokenIndex].lower() == 'x':
+                return None, UNDECIDED_X, value, valueAttrs, tokenIndex + 1
+            elif tokenValues[tokenIndex].lower() == 'y':
+                return None, UNDECIDED_Y, value, valueAttrs, tokenIndex + 1
+            else:
+                return str.format( "Unxpected symbol {0} following expression", tokenValues[ tokenIndex] ), None, None, None, tokenIndex
+        else:
+            return "Unxpected gunk following expression", None, None, None, tokenIndex
+
+    return None, UNDECIDED, value, valueAttrs, tokenIndex
+
+
+def deposit
+
+
+def depositOp( op, arg, argSize ):
     pass
+
+
+def rememberOp( op, valueAttrs, size ):
+    deposit( op )
+    remember( valueAttrs, size )
+
+
+def assembleInstruction( op, tokens, tokenValues, tokenIndex ):
+    errorString, addrMode, value, valueAttrs, tokenIndex = parseAddressingMode( tokens, tokenvalues, tokenIndex )
+    if errorString:
+        return errorString
+
+    #xxx if value defined, do addr mode conversions for op
+    #xxx otherwise do worst case, remember fixup
 
 
 def assembleLine( line ):
@@ -177,7 +297,7 @@ def assembleLine( line ):
     #   SYMBOL = VALUE
     #
     if len(tokens) >= 3 and tokens[0] == tok.SYMBOL and tokens[1] == '=':
-        errorString, value, tokenIndex = eval( tokens, tokenValues, 2 )
+        errorString, value, valueAttrs, tokenIndex = eval( tokens, tokenValues, 2 )
         if errorString:
             return errorString
         if tokenIndex < len(tokens):
@@ -213,7 +333,7 @@ def assembleLine( line ):
 
 def test():
     assert assembleLine( 'label:' ) == None
-    asert assembleLine( '.label:' ) == None
+    assert assembleLine( '.label:' ) == None
     assert assembleLine( 'symbol = 42' ) == None
 
     # more...

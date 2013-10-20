@@ -183,9 +183,57 @@ def get( label ):
 #
 #   eval ==> errorString, value, valueAttrs, tokenIndex
 #
+
+gOperators = [
+        { '&': True, '^': True, '|': True },
+        { '<': True, '<=': True, '>': True, '>=': True, '==': True, '!=': True },
+        { '<<': True, '>>': True },
+        { '+': True, '-': True },
+        { '*': True, '/': True, '%': True },
+    ]
+
+gUnaryOperators = { '-': True, '!': True, '~': True }
+
 def eval( tokens, tokenValues, tokenIndex ):
+
+    postfix = []
+
+    def terminal():
+        if tokenIndex >= len(tokens):
+            return "expected expression"
+
+        if tokens[tokenIndex] in gUnaryOperators:
+            postfix.append( tokens[tokenIndex] )
+            tokenIndex = tokenIndex + 1
+
+        if tokenIndex >= len(tokens):
+            return "expected expression"
+
+        if tokens[tokenIndex] == '(':
+            tokenIndex = tokenIndex + 1
+            errorString = evalHelper()
+            if errorString:
+                return errorString
+
+            if tokenIndex >= len(tokens) or tokens[tokenIndex] != ')':
+                return "missing close paren"
+            tokenIndex = tokenIndex + 1
+            return None
+            
+        elif tokens[tokenIndex] == tok.SYMBOL or tokens[tokenIndex] == tok.NUMBER:
+            postfix.append( tokenValues[tokenIndex] )
+            tokenIndex = tokenIndex + 1
+            return None
+
+        else:
+            return "syntax error"
+
+    def evalHelper():
+        errorString = terminal()
+        if errorString:
+            return errorString
+
     return None, tokenValues[tokenIndex], 0, tokenIndex + 1        #xxx
-    pass
 
 
 #
@@ -266,8 +314,17 @@ def parseAddressingMode( tokens, tokenValues, tokenIndex ):
     return None, UNDECIDED, value, valueAttrs, tokenIndex
 
 
-def deposit
+#   ----------------------------------------------------------------
+#   Image construction
+#   ----------------------------------------------------------------
 
+def depositByte( byte, fixup=None ):
+    pass
+
+
+def depositWord( word, fixup=None ):
+    pass
+    
 
 def depositOp( op, arg, argSize ):
     pass
@@ -277,6 +334,10 @@ def rememberOp( op, valueAttrs, size ):
     deposit( op )
     remember( valueAttrs, size )
 
+
+#   ----------------------------------------------------------------
+#   Assembly
+#   ----------------------------------------------------------------
 
 def assembleInstruction( op, tokens, tokenValues, tokenIndex ):
     errorString, addrMode, value, valueAttrs, tokenIndex = parseAddressingMode( tokens, tokenvalues, tokenIndex )

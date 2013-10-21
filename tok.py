@@ -5,9 +5,18 @@
 import sys
 import re
 
+EOF = 0
 STRING = 1
 SYMBOL = 2
 NUMBER = 3
+
+gTokenTypeToString = [
+    "End of file",
+    "String",
+    "Symbol",
+    "Number"
+    ]
+
 
 gMultiCharTokenStarts = {
     '>': { '>': True, '=': True },
@@ -19,7 +28,6 @@ gMultiCharTokenStarts = {
 gSingleCharTokens = {
      '!': True,
      '#': True,
-     '$': True,
      '%': True,
      '&': True,
      '(': True,
@@ -91,7 +99,7 @@ def parseNumber( s, i ):
     base = 10
     gotDigit = False
 
-    if s.startswith( '0x' ) or s.startswith( '0X' ):
+    if i + 2 < len(s) and s[i] == '0' and (s[i+1] == 'x' or s[i+1] == 'X'):
         base = 16
         i = i + 2
     elif s[i] == '$':
@@ -166,7 +174,7 @@ def tokenize( s ):
 
         c = s[i]
         
-        if isDigit( c ):
+        if isDigit( c ) or c == '$':
             value, i = parseNumber( s, i )
             tokens.append( NUMBER )
             tokenValues.append( value )
@@ -209,6 +217,55 @@ def tokenize( s ):
 
 
     return leadingWhitespace, tokens, tokenValues
+
+
+class Tokenizer:
+
+    def __init__( self, string ):
+        self.m_leadingWhitespace, self.m_tokens, self.m_tokenValues = tokenize( string )
+        self.m_tokenIndex = 0
+
+    def leadingWhitespace( self ):
+        return self.m_leadingWhitespace
+
+    def atEnd( self ):
+        return self.m_tokenIndex >= len( self.m_tokens )
+
+    def advance( self ):
+        if self.m_tokenIndex < len( self.m_tokens ):
+            self.m_tokenIndex = self.m_tokenIndex + 1
+        else:
+            raise Exception( "unexpected end of line" )
+
+    def nextTok( self ):
+        if self.atEnd():
+            raise Exception( "Unexpected end" )
+
+        self.m_tokenIndex = self.m_tokenIndex + 1
+        return self.curTok()
+
+    def curTok( self ):
+        if self.m_tokenIndex < len( self.m_tokens ):
+            return self.m_tokens[self.m_tokenIndex]
+        else:
+            return EOF
+
+    def curValue( self ):
+        if self.m_tokenIndex < len( self.m_tokens ):
+            return self.m_tokenValues[self.m_tokenIndex]
+        else:
+            raise Exception( "Ran off end of tokens" )
+
+    # expect a token, an optional value, and advance past it
+    def expect( self, expectedTok, expectedValue=None ):
+        if self.curTok() != expectedTok:
+            raise Exception( str.format( "Expected token type {0}", gTokenTypeToString( expectedTok) ) )
+
+        if expectedValue != None and expectedValue != self.curValue():
+            raise Exception( str.format( "Expected value {0}", expectedValue ) )
+
+        if not self.atEnd():
+            self.m_tokenIndex = self.m_tokenIndex + 1
 
 
 def test():
@@ -294,5 +351,17 @@ def test():
     print tokenize( '\ttya' )
     print tokenize( ' foo ; comment ' )
 
+
+def testTokenizer():
+    def printTokens( tokenizer ):
+        while not tokenizer.atEnd():
+            print tokenizer.curTok(), tokenizer.curValue()
+            tokenizer.nextTok()
+
+    printTokens( Tokenizer( "label: lda #0x42  ; get froggles" ) )
+    printTokens( Tokenizer( "label: lda #$42  ; get froggles" ) )
+    
+
 if __name__ == '__main__':
     test()
+    testTokenizer()

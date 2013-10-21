@@ -108,9 +108,9 @@ def parseNumber( s, i ):
         gotDigit = True
 
     if not gotDigit:
-        return "Vaucous number, need actual value digits", 0, i
+        raise Exception( str.format( "Vaucous number, need actual value digits" ) )
     else:
-        return None, value, i
+        return value, i
 
 
 def parseString( s, i, endQuote ):
@@ -118,7 +118,7 @@ def parseString( s, i, endQuote ):
 
     while True:
         if i >= len(s):
-            return "Unterminated string", '', i
+            raise Exception( "Unterminated string" )
 
         c = s[i]
         
@@ -129,7 +129,7 @@ def parseString( s, i, endQuote ):
         if c == '\\':
             i = i + 1
             if i >= len(s):
-                return "Bad escape at end of string", '', i
+                raise Exception( "Bad escape at end of string" )
             c = s[i]
 
             if c == 'n':
@@ -146,15 +146,14 @@ def parseString( s, i, endQuote ):
         value += c
         i = i + 1
 
-    return None, value, i
+    return value, i
 
 
 #
-#   string ==> ( errorStringOrNone, leadingWhitespaceBool, [token...], [tokenValue...] )
+#   string ==> ( leadingWhitespaceBool, [token...], [tokenValue...] )
 #
 def tokenize( s ):
 
-    errorString = None
     leadingWhitespace = len(s) > 0 and isSpace( s[0] )
     tokens = []
     tokenValues = []
@@ -168,9 +167,7 @@ def tokenize( s ):
         c = s[i]
         
         if isDigit( c ):
-            errorString, value, i = parseNumber( s, i )
-            if errorString:
-                break
+            value, i = parseNumber( s, i )
             tokens.append( NUMBER )
             tokenValues.append( value )
 
@@ -184,16 +181,12 @@ def tokenize( s ):
             tokenValues.append( symbol )
 
         elif c == '\'':
-            errorString, value, i = parseString( s, i + 1, '\'' )
-            if errorString:
-                break
+            value, i = parseString( s, i + 1, '\'' )
             tokens.append( STRING )
             tokenValues.append( value )
 
         elif c == '"':
-            errorString, value, i = parseString( s, i + 1, '"' )
-            if errorString:
-                break
+            value, i = parseString( s, i + 1, '"' )
             tokens.append( STRING )
             tokenValues.append( value )
 
@@ -212,10 +205,10 @@ def tokenize( s ):
             i = i + 1
 
         else:
-            errorString = str.format( 'Unexpected character: {0}', c )
-            break
+            raise Exception( str.format( 'Unexpected character: {0}', c ) )
 
-    return errorString, leadingWhitespace, tokens, tokenValues
+
+    return leadingWhitespace, tokens, tokenValues
 
 
 def test():
@@ -249,8 +242,7 @@ def test():
     assert isSymbolContinuation( '0' )
 
     def testNumber( s, wantedValue ):
-        e, v, i = parseNumber( s, 0 )
-        assert e == None
+        v, i = parseNumber( s, 0 )
         assert v == wantedValue
 
     testNumber( '0', 0 )
@@ -265,15 +257,17 @@ def test():
     testNumber( '0xffffffff', 0xffffffff )
 
     def brokenNumber( s ):
-        e, v, i = parseNumber( s, 0 )
-        assert e != None
+        try:
+            v, i = parseNumber( s, 0 )
+            assert False # should have taken an exception
+        except:
+            pass
 
     brokenNumber( '0x' )
     brokenNumber( '0b' )
 
     def testString( s, wantedValue ):
-        e, v, i = parseString( s, 1, s[0] )
-        assert e == None
+        v, i = parseString( s, 1, s[0] )
         assert v == wantedValue
 
     testString( '\'\'', '' )
@@ -285,8 +279,11 @@ def test():
     testString( '\'code=\\\'\'', 'code=\'' )
 
     def brokenString( s ):
-        e, v, i = parseString( s, 1, s[0] )
-        assert e != None
+        try:
+            v, i = parseString( s, 1, s[0] )
+            assert False        # should have taken an exception
+        except:
+            pass
 
     brokenString( '\'foo' )
     brokenString( '\'foo\\' )

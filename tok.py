@@ -203,7 +203,7 @@ def tokenize( s ):
             break
 
         elif c in gMultiCharTokenStarts and i + 1 < len(s) and s[i+1] in gMultiCharTokenStarts[c]:
-            tokens.append( s[i:i+1] )
+            tokens.append( s[i:i+2] )
             tokenValues.append( None )
             i = i + 2
 
@@ -350,6 +350,7 @@ def test():
     print tokenize( 'label: db "a string"' )
     print tokenize( '\ttya' )
     print tokenize( ' foo ; comment ' )
+    print tokenize( '1 << 8' )
 
 
 def testTokenizer():

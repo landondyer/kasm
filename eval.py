@@ -4,72 +4,175 @@ import tok
 
 class Expression:
 
-    def __init__( self, postfix ):
-        self.m_postfix = postfix
-        self.m_index = 0
-        self.m_stack = []
+    def __init__( self, tokenizer ):
         self.initOperators()
+        self.parse( tokenizer )
+        self.m_index = 0
         
     def doPushConst( self ):
         self.m_stack.append( self.m_postfix[ self.m_index] )
         self.m_index = self.m_index + 1
 
     def doPushSym( self ):
-        pass
+        symbol = self.m_postfix[ self.m_index]
+        self.m_index = self.m_index + 1
+
+        if kasm.isDefined( symbol ):
+            self.m_stack.append( kasm.get( symbol ) )
+        else:
+            self.m_undefined = 0
+            self.m_stack.append( 1 )
 
     def doAdd( self ):
-        pass
+        # print "doAdd"
+        v1 = self.m_stack.pop()
+        v2 = self.m_stack.pop()
+        self.m_stack.append( v2 + v1 )
 
     def doAnd( self ):
-        pass
+        # print "doAnd"
+        v1 = self.m_stack.pop()
+        v2 = self.m_stack.pop()
+        self.m_stack.append( v2 & v1 )
 
     def doDiv( self ):
-        pass
+        # print "doDiv"
+        v1 = self.m_stack.pop()
+        v2 = self.m_stack.pop()
+        if v1 == 0:
+            v1 = 1
+        self.m_stack.append( v2 / v1 )
 
     def doEQ( self ):
-        pass
+        # print "doEQ"
+        v1 = self.m_stack.pop()
+        v2 = self.m_stack.pop()
+        if v1 == v2:
+            self.m_stack.append( 1 )
+        else:
+            self.m_stack.append( 0 )
 
     def doGE( self ):
-        pass
+        # print "doGE"
+        v1 = self.m_stack.pop()
+        v2 = self.m_stack.pop()
+        if v1 >= v2:
+            self.m_stack.append( 1 )
+        else:
+            self.m_stack.append( 0 )
 
     def doGT( self ):
-        pass
+        # print "doGT"
+        v1 = self.m_stack.pop()
+        v2 = self.m_stack.pop()
+        if v1 > v2:
+            self.m_stack.append( 1 )
+        else:
+            self.m_stack.append( 0 )
 
     def doLE( self ):
-        pass
+        # print "doLE"
+        v1 = self.m_stack.pop()
+        v2 = self.m_stack.pop()
+        if v1 <= v2:
+            self.m_stack.append( 1 )
+        else:
+            self.m_stack.append( 0 )
 
     def doLT( self ):
-        pass
+        # print "doLT"
+        v1 = self.m_stack.pop()
+        v2 = self.m_stack.pop()
+        if v1 < v2:
+            self.m_stack.append( 1 )
+        else:
+            self.m_stack.append( 0 )
 
     def doMod( self ):
-        pass
+        # print "doMod"
+        v1 = self.m_stack.pop()
+        v2 = self.m_stack.pop()
+        if v1 == 0:
+            v1 = 1
+        self.m_stack.append( v2 % v1 )
 
     def doMult( self ):
-        pass
+        # print "doMult"
+        v1 = self.m_stack.pop()
+        v2 = self.m_stack.pop()
+        if v1 == 0:
+            v1 = 1
+        self.m_stack.append( v2 * v1 )
 
     def doNE( self ):
-        pass
+        # print "doNE"
+        v1 = self.m_stack.pop()
+        v2 = self.m_stack.pop()
+        if v1 != v2:
+            self.m_stack.append( 1 )
+        else:
+            self.m_stack.append( 0 )
 
     def doOr( self ):
-        pass
+        # print "doOr"
+        v1 = self.m_stack.pop()
+        v2 = self.m_stack.pop()
+        self.m_stack.append( v2 | v1 )
 
     def doSHL( self ):
-        pass
+        # print "doSHL"
+        v1 = self.m_stack.pop()
+        v2 = self.m_stack.pop()
+        self.m_stack.append( v2 << v1 )
 
     def doSHR( self ):
-        pass
+        # print "doSHR"
+        v1 = self.m_stack.pop()
+        v2 = self.m_stack.pop()
+        self.m_stack.append( v2 >> v1 )
 
     def doSub( self ):
-        pass
+        # print "doSub"
+        v1 = self.m_stack.pop()
+        v2 = self.m_stack.pop()
+        self.m_stack.append( v2 - v1 )
 
     def doXor( self ):
-        pass
+        # print "doXor"
+        v1 = self.m_stack.pop()
+        v2 = self.m_stack.pop()
+        self.m_stack.append( v2 ^ v1 )
+
+    def doNeg( self ):
+        self.m_stack[-1] = - self.m_stack[-1]
+
+    def doNot( self ):
+        v = self.m_stack[-1]
+        if v:
+            self.m_stack[-1] = 0
+        else:
+            self.m_stack[-1] = 1
 
     def eval( self ):
+        # print self.m_postfix
+        self.m_undefined = []
+        self.m_stack = []
+
         while self.m_index < len(self.m_postfix):
             fn = self.m_postfix[self.m_index]
             self.m_index += 1
             fn()
+
+        assert len(self.m_stack) == 1
+
+        if self.m_undefined:
+            return None
+        else:
+            return self.m_stack[0]
+
+    def isUndefined( self ):
+        return len(self.m_undefined) == 0
+
 
     #
     #   operators, in increasing precedence
@@ -85,51 +188,79 @@ class Expression:
             ]
 
 
-    def parse( self, tok ):
+    def parse( self, tokenizer ):
 
-        def parseHelper():
+        def parseTerm():
+            if tokenizer.curTok() == tok.SYMBOL:
+                self.m_postfix.append( self.doPushSym )
+                self.m_postfix.append( tokenizer.curValue() )
+                tokenizer.nextTok()
+            elif tokenizer.curTok() == tok.NUMBER:
+                self.m_postfix.append( self.doPushConst)
+                self.m_postfix.append( tokenizer.curValue() )
+                tokenizer.nextTok()
+            elif tokenizer.curTok() == '(':
+                tokenizer.advance()
+                parseHelper( len(self.m_operators) - 1)
+                tokenizer.expect( ')' )
+            else:
+                raise Exception( str.format( "unexpected token {0}", tokenizer.curTok() ) )
 
-            def parseTerm():
-                if tok.curTok() == tok.SYMBOL:
-                    self.m_postfix.append( [ doPushSym, tok.curValue] )
-                    tok.nextTok()
-                elif tok.curTok() == tok.NUMBER:
-                    self.m_postfix.append( [ doPushConst, tok.curValue] )
-                    tok.nextTok()
-                elif tok.curTok() == '(':
-                    tok.advance()
-                    parseHelper()
-                    tok.expect( ')' )
-                else:
-                    raise Exception( "unexpected token" )
+        def parseUnary():
+            if tokenizer.curTok() == '-':
+                tokenizer.advance()
+                parseTerm()
+                self.m_postfix.append( self.doNeg )
+            elif tokenizer.curTok() == '!':
+                tokenizer.advance()
+                parseTerm()
+                self.m_postfix.append( self.doNot )
+            else:
+                parseTerm()
 
-            def parseUnary():
-                if tok.curTok() == '-':
-                    parseTerm()
-                    self.m_postfix.append( doNeg )
-                elif tok.curTok() == '!':
-                    parseTerm()
-                    self.m_postfix.append( doNot )
-                else:
-                    parseTerm()
+        def parseHelper( level ):
+            if level < 0:
+                parseUnary()
+            else:
+                parseHelper( level - 1 )
+                while tokenizer.curTok() in self.m_operators[level]:
+                    op = tokenizer.curTok()
+                    tokenizer.advance()
+                    parseHelper( level - 1 )
+                    self.m_postfix.append( self.m_operators[level][op] )
 
-            def parse( level ):
-                if level == 0:
-                    parseUnary()
-                else:
-                    parse( level - 1 )
-                    while tok.curTok() in self.m_operators[level]:
-                        op = tok.curTok()
-                        parse( level - 1 )
-                        self.m_postfix.append( op )
-
-        parse( len(self.m_operators) - 1)
-
+        self.m_postfix = []
+        parseHelper( len(self.m_operators) - 1)
 
 
 def test():
-    e = Expression( tok.Tokenizer("42") )
-    # e.eval()
+    def testExpr( expr ):
+        t = tok.Tokenizer( expr )
+        e = Expression( t )
+        print expr, " ==> ", e.eval()
+
+    testExpr( "42" )
+    testExpr( "3 + 4" )
+    testExpr( "9 - 5" )
+    testExpr( "8 / 4" )
+    testExpr( "10 % 3" )
+    testExpr( "15 & 3" )
+    testExpr( "1 | 6" )
+    testExpr( "1 << 8" )
+    testExpr( "1024 >> 2" )
+    testExpr( "(1 + 2) * 3" )
+    testExpr( "4 * (1 + 2)" )
+    testExpr( "4 * (1 + 2) * 100" )
+    testExpr( "-100" )
+    testExpr( "! 1" )
+    testExpr( "! 0" )
+
+    kasm.set( "foo", 42 )
+    testExpr( "foo" )
+    testExpr( "foo + foo * 100 * foo" )
+
+    kasm.set( "bar", 0x10000 )
+    testExpr( "bar - 1" )
 
 if __name__ == '__main__':
     test()

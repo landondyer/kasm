@@ -2,7 +2,7 @@
 #   6502 assembler
 #
 import tok
-
+import eval
 
 #
 #   Opcodes and addressing modes

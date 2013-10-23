@@ -166,7 +166,7 @@ def isDefined( label ):
     if label.startswith( '.' ):
         return gScope and gScope in gSymbol and label in gSymbol[gScope]
     else:
-        return label in gSymbol[label]
+        return label in gSymbol and label in gSymbol[label]
 
 
 def get( label ):
@@ -178,58 +178,6 @@ def get( label ):
     else:
         #xxx mark referenced
         return gSymbol[label][label]
-
-
-#
-#   eval ==> value, valueAttrs, tokenIndex
-#
-
-gOperators = [
-        { '&': True, '^': True, '|': True },
-        { '<': True, '<=': True, '>': True, '>=': True, '==': True, '!=': True },
-        { '<<': True, '>>': True },
-        { '+': True, '-': True },
-        { '*': True, '/': True, '%': True },
-    ]
-
-gUnaryOperators = { '-': True, '!': True, '~': True }
-
-def eval( tokens, tokenValues, tokenIndex ):
-
-    postfix = []
-
-    def terminal():
-        if tokenIndex >= len(tokens):
-            raise Exception( "expected expression" )
-
-        if tokens[tokenIndex] in gUnaryOperators:
-            postfix.append( tokens[tokenIndex] )
-            tokenIndex = tokenIndex + 1
-
-        if tokenIndex >= len(tokens):
-            raise Exception( "expected expression" )
-
-        if tokens[tokenIndex] == '(':
-            tokenIndex = tokenIndex + 1
-            evalHelper()
-
-            if tokenIndex >= len(tokens) or tokens[tokenIndex] != ')':
-                raise Exception( "missing close paren" )
-            tokenIndex = tokenIndex + 1
-            return None
-            
-        elif tokens[tokenIndex] == tok.SYMBOL or tokens[tokenIndex] == tok.NUMBER:
-            postfix.append( tokenValues[tokenIndex] )
-            tokenIndex = tokenIndex + 1
-            return None
-
-        else:
-            raise Exception( "syntax error" )
-
-    def evalHelper():
-        terminal()
-
-    return tokenValues[tokenIndex], 0, tokenIndex + 1
 
 
 #
@@ -339,14 +287,17 @@ def assembleInstruction( op, tokens, tokenValues, tokenIndex ):
 
 
 def assembleLine( line ):
-    leadingWhitespace, tokens, tokenValues = tok.tokenize( line )
+    tokenizer = tok.Tokenizer( line )
+    # leadingWhitespace, tokens, tokenValues = tok.tokenize( line )
 
     #
     #   SYMBOL = VALUE
     #
-    if len(tokens) >= 3 and tokens[0] == tok.SYMBOL and tokens[1] == '=':
-        value, valueAttrs, tokenIndex = eval( tokens, tokenValues, 2 )
-        if tokenIndex < len(tokens):
+    if tokenizer.curTok() == tok.SYMBOL and tokenizer.peek(1) == '=':
+        sym = tokenizer.curValue()
+        tokenizer.advance( 2 )
+        expr = eval.Expression( tokenizer )
+        if not tokenizer.atEnd():
             raise Exception( "Bad expression (extra gunk)" )
         set( tokenValues[0], value )
         return

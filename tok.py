@@ -231,11 +231,17 @@ class Tokenizer:
     def atEnd( self ):
         return self.m_tokenIndex >= len( self.m_tokens )
 
-    def advance( self ):
-        if self.m_tokenIndex < len( self.m_tokens ):
-            self.m_tokenIndex = self.m_tokenIndex + 1
+    def advance( self, n=1 ):
+        if self.m_tokenIndex + n <= len( self.m_tokens ):
+            self.m_tokenIndex = self.m_tokenIndex + n
         else:
             raise Exception( "unexpected end of line" )
+
+    def peek( self, i ):
+        if self.m_tokenIndex + i < len( self.m_tokens ):
+            return self.m_tokens[self.m_tokenIndex + i]
+        else:
+            return None
 
     def nextTok( self ):
         if self.atEnd():

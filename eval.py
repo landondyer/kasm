@@ -20,7 +20,7 @@ class Expression:
         if kasm.isDefined( symbol ):
             self.m_stack.append( kasm.get( symbol ) )
         else:
-            self.m_undefined = 0
+            self.m_undefined = True
             self.m_stack.append( 1 )
 
     def doAdd( self ):
@@ -37,11 +37,14 @@ class Expression:
 
     def doDiv( self ):
         # print "doDiv"
-        v1 = self.m_stack.pop()
-        v2 = self.m_stack.pop()
-        if v1 == 0:
-            v1 = 1
-        self.m_stack.append( v2 / v1 )
+        if self.m_undefined:
+            self.m_stack.pop()
+        else:
+            v1 = self.m_stack.pop()
+            v2 = self.m_stack.pop()
+            if v1 == 0:
+                raise Exception( "Division by zero" )
+            self.m_stack.append( v2 / v1 )
 
     def doEQ( self ):
         # print "doEQ"
@@ -90,11 +93,14 @@ class Expression:
 
     def doMod( self ):
         # print "doMod"
-        v1 = self.m_stack.pop()
-        v2 = self.m_stack.pop()
-        if v1 == 0:
-            v1 = 1
-        self.m_stack.append( v2 % v1 )
+        if self.m_undefined:
+            self.m_stack.pop()
+        else:
+            v1 = self.m_stack.pop()
+            v2 = self.m_stack.pop()
+            if v1 == 0:
+                raise Exception( "Modulo by zero" )
+            self.m_stack.append( v2 % v1 )
 
     def doMult( self ):
         # print "doMult"
@@ -261,6 +267,9 @@ def test():
 
     kasm.set( "bar", 0x10000 )
     testExpr( "bar - 1" )
+
+    testExpr( "notYetDefined" )
+
 
 if __name__ == '__main__':
     test()

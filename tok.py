@@ -243,6 +243,12 @@ class Tokenizer:
         else:
             return None
 
+    def peekValue( self, i ):
+        if self.m_tokenIndex + i < len( self.m_tokens ):
+            return self.m_tokenValues[self.m_tokenIndex + i]
+        else:
+            return None
+
     def nextTok( self ):
         if self.atEnd():
             raise Exception( "Unexpected end" )

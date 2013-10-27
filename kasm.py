@@ -184,14 +184,15 @@ def get( label ):
 #   parseAddressingMode ==> addrMode, value, valueAttrs, tokenIndex
 #
 
-def parseAddressingMode( tokens, tokenValues, tokenIndex ):
+def parseAddressingMode( tokenizer ):
 
-    if tokenIndex >= len(tokens):
-        return IMPLIED, None, None, tokenIndex
+    if tokenizer.atEnd():
+        return IMPLIED, None, None
 
-    if tokens[tokenIndex] == '#':
-        value, valueAttrs, tokenIndex = eval( tokens, tokenValues, tokenIndex + 1 )
-        return IMMED, value, valueAttrs, tokenIndex
+    if tokenizer.curTok() == '#':
+        tokenizer.advance()
+        expr = eval.Expression( tokenizer )
+        return IMMED, expr
 
     #
     #   (n)
@@ -199,31 +200,31 @@ def parseAddressingMode( tokens, tokenValues, tokenIndex ):
     #   (n,x)
     #   (n),y
     #
-    if tokens[tokenIndex] == '(':
-        value, valueAttrs, tokenIndex = eval( tokens, tokenValues, tokenIndex + 1 )
-
-        if tokenIndex >= len(tokens):
-            raise Exception( "bad addressing mode (no close-parenthesis)" )
+    if tokenizer.curTok() == '(':
+        tokenizer.advance()
+        expr = eval.Expression( tokenizer )
 
         #   (expr,x)
-        if tokens[tokenIndex] == ',':
-            if tokenIndex + 2 < len(tokens) and tokens[tokenIndex+1] == tok.SYMBOL and tokenValues[tokenIndex+1].lower() == 'x' and tokens[tokenIndex + 2] == ')':
-                return INDX, value, valueAttrs, tokenIndex + 2
+        if tokenizer.curTok() == ',':
+            if  tokenizer.peek( 1 ) == tok.SYMBOL and tokenizer.peekValue(1).lower() == 'x' and tokenizer.peek( 2 ) == ')':
+                tokenizer.advance( 3 )
+                return INDX, expr
             else:
                 raise Exception( "bad addressing mode (started out looking like indirect-x)" )
 
-        elif tokens[tokenIndex] == ')':
+        elif tokenizer.curTok() == ')':
 
-            tokenIndex = tokenIndex + 1
+            tokenizer.advance()
 
             #
             #   (expr),y
             #   (expr)
             #
-            if tokenIndex + 2 < len(tokens) and tokens[tokenIndex] == ',' and tokens[tokenIndex+1] == tok.SYMBOL and tokenValues[tokenIndex+1].lower() == 'y':
-                return INDY, value, valueAttrs, tokenIndex + 2
+            if tokenizer.curTok() == ',' and tokenizer.peek( 1 ) == tok.SYMBOL and tokenizer.peekValue( 1 ).lower() == 'y':
+                tokenizer.advance( 2 )
+                return INDY, expr
             else:
-                return IND, value, valueAttrs, tokenIndex
+                return IND, expr
 
         else:
             raise Exception( "bad addressing mode (started out looking indirect, but fizzled)" )
@@ -237,21 +238,22 @@ def parseAddressingMode( tokens, tokenValues, tokenIndex ):
     #   n,y
     #
 
-    value, valueAttrs, tokenIndex = eval( tokens, tokenValues, tokenIndex )
+    expr = eval.Expression( tokenizer )
 
-    if tokenIndex < len(tokens) and tokens[tokenIndex] == ',':
-        tokenIndex = tokenIndex + 1
-        if tokens[tokenIndex] == tok.SYMBOL:
-            if tokenValues[tokenIndex].lower() == 'x':
-                return UNDECIDED_X, value, valueAttrs, tokenIndex + 1
-            elif tokenValues[tokenIndex].lower() == 'y':
-                return UNDECIDED_Y, value, valueAttrs, tokenIndex + 1
+    if tokenizer.curTok() == ',':
+        tokenizer.advance()
+
+        if tokenizer.curTok() == tok.SYMBOL:
+            if tokenizer.curValue().lower() == 'x':
+                return UNDECIDED_X, expr
+            elif tokenValues.curValue().lower() == 'y':
+                return UNDECIDED_Y, expr
             else:
                 raise Exception( str.format( "Unxpected symbol {0} following expression", tokenValues[ tokenIndex] ) )
         else:
             raise Exception( "Unxpected gunk following expression" )
 
-    return UNDECIDED, value, valueAttrs, tokenIndex
+    return UNDECIDED, expr
 
 
 #   ----------------------------------------------------------------
@@ -279,8 +281,8 @@ def rememberOp( op, valueAttrs, size ):
 #   Assembly
 #   ----------------------------------------------------------------
 
-def assembleInstruction( op, tokens, tokenValues, tokenIndex ):
-    addrMode, value, valueAttrs, tokenIndex = parseAddressingMode( tokens, tokenvalues, tokenIndex )
+def assembleInstruction( op, tokenizer ):
+    addrMode, expr = parseAddressingMode( tokenizer )
 
     #xxx if value defined, do addr mode conversions for op
     #xxx otherwise do worst case, remember fixup
@@ -299,7 +301,11 @@ def assembleLine( line ):
         expr = eval.Expression( tokenizer )
         if not tokenizer.atEnd():
             raise Exception( "Bad expression (extra gunk)" )
-        set( tokenValues[0], value )
+
+        #xxx TODO: see if expression is valid during pass 2? just
+        #save expr?
+        
+        set( tokenizer.curValue(), expr.eval() )
         return
         
     #
@@ -307,21 +313,22 @@ def assembleLine( line ):
     #   NOTE: could enforce leadingWhitespace, but we have a ':'
     #   instead of that.
     #
-    tokenIndex = 0
-    if len(tokens) >= 2 and tokens[0] == tok.SYMBOL and tokens[1] == ':':
-        set( tokenValues[tokenIndex], gLoc )
-        tokenIndex = tokenIndex + 2
+    if tokenizer.curTok() == tok.SYMBOL and tokenizer.peek(1) == ':':
+        set( tokenizer.curValue(), gLoc )
+        tokenizer.advance( 2 )
 
     #
     #   handle ops
     #
-    if tokenIndex < len(tokens) and tokens[tokenIndex] == tok.SYMBOL:
+    if tokenizer.curTok() == tok.SYMBOL:
 
-        op = tokens[tokenIndex]
+        op = tokenizer.curTok()
+        tokenizer.advance()
+        
         if op in gPsuedoOps:
-            gPsuedoOps[op]( tokens, tokenValues, tokenIndex )
+            gPsuedoOps[op]( tokenizer )
         elif op in gOps:
-            assembleInstruction( op, tokens, tokenValues, tokenIndex + 1 )
+            assembleInstruction( op, tokenizer )
         else:
             raise Exception( str.format( 'Unknown op: {0}', op ) )
 

@@ -7,7 +7,6 @@ class Expression:
     def __init__( self, tokenizer ):
         self.initOperators()
         self.parse( tokenizer )
-        self.m_index = 0
         
     def doPushConst( self ):
         self.m_stack.append( self.m_postfix[ self.m_index] )
@@ -24,19 +23,16 @@ class Expression:
             self.m_stack.append( 1 )
 
     def doAdd( self ):
-        # print "doAdd"
         v1 = self.m_stack.pop()
         v2 = self.m_stack.pop()
         self.m_stack.append( v2 + v1 )
 
     def doAnd( self ):
-        # print "doAnd"
         v1 = self.m_stack.pop()
         v2 = self.m_stack.pop()
         self.m_stack.append( v2 & v1 )
 
     def doDiv( self ):
-        # print "doDiv"
         if self.m_undefined:
             self.m_stack.pop()
         else:
@@ -47,7 +43,6 @@ class Expression:
             self.m_stack.append( v2 / v1 )
 
     def doEQ( self ):
-        # print "doEQ"
         v1 = self.m_stack.pop()
         v2 = self.m_stack.pop()
         if v1 == v2:
@@ -56,7 +51,6 @@ class Expression:
             self.m_stack.append( 0 )
 
     def doGE( self ):
-        # print "doGE"
         v1 = self.m_stack.pop()
         v2 = self.m_stack.pop()
         if v1 >= v2:
@@ -65,7 +59,6 @@ class Expression:
             self.m_stack.append( 0 )
 
     def doGT( self ):
-        # print "doGT"
         v1 = self.m_stack.pop()
         v2 = self.m_stack.pop()
         if v1 > v2:
@@ -74,7 +67,6 @@ class Expression:
             self.m_stack.append( 0 )
 
     def doLE( self ):
-        # print "doLE"
         v1 = self.m_stack.pop()
         v2 = self.m_stack.pop()
         if v1 <= v2:
@@ -83,7 +75,6 @@ class Expression:
             self.m_stack.append( 0 )
 
     def doLT( self ):
-        # print "doLT"
         v1 = self.m_stack.pop()
         v2 = self.m_stack.pop()
         if v1 < v2:
@@ -92,7 +83,6 @@ class Expression:
             self.m_stack.append( 0 )
 
     def doMod( self ):
-        # print "doMod"
         if self.m_undefined:
             self.m_stack.pop()
         else:
@@ -103,7 +93,6 @@ class Expression:
             self.m_stack.append( v2 % v1 )
 
     def doMult( self ):
-        # print "doMult"
         v1 = self.m_stack.pop()
         v2 = self.m_stack.pop()
         if v1 == 0:
@@ -111,7 +100,6 @@ class Expression:
         self.m_stack.append( v2 * v1 )
 
     def doNE( self ):
-        # print "doNE"
         v1 = self.m_stack.pop()
         v2 = self.m_stack.pop()
         if v1 != v2:
@@ -120,31 +108,26 @@ class Expression:
             self.m_stack.append( 0 )
 
     def doOr( self ):
-        # print "doOr"
         v1 = self.m_stack.pop()
         v2 = self.m_stack.pop()
         self.m_stack.append( v2 | v1 )
 
     def doSHL( self ):
-        # print "doSHL"
         v1 = self.m_stack.pop()
         v2 = self.m_stack.pop()
         self.m_stack.append( v2 << v1 )
 
     def doSHR( self ):
-        # print "doSHR"
         v1 = self.m_stack.pop()
         v2 = self.m_stack.pop()
         self.m_stack.append( v2 >> v1 )
 
     def doSub( self ):
-        # print "doSub"
         v1 = self.m_stack.pop()
         v2 = self.m_stack.pop()
         self.m_stack.append( v2 - v1 )
 
     def doXor( self ):
-        # print "doXor"
         v1 = self.m_stack.pop()
         v2 = self.m_stack.pop()
         self.m_stack.append( v2 ^ v1 )
@@ -160,9 +143,9 @@ class Expression:
             self.m_stack[-1] = 1
 
     def eval( self ):
-        # print self.m_postfix
         self.m_undefined = []
         self.m_stack = []
+        self.m_index = 0
 
         while self.m_index < len(self.m_postfix):
             fn = self.m_postfix[self.m_index]

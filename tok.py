@@ -3,7 +3,7 @@
 #
 
 import sys
-import re
+
 
 EOF = 0
 STRING = 1

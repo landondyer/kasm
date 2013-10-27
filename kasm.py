@@ -106,28 +106,6 @@ gOps = {
 }
 
 
-def fn_org( tokens, tokenValue, tokenIndex ):
-    pass
-
-def fn_dc( tokens, tokenValue, tokenIndex ):
-    pass
-
-def fn_dw( tokens, tokenValue, tokenIndex ):
-    pass
-
-def fn_include( tokens, tokenValue, tokenIndex ):
-    pass
-
-
-gPsuedoOps = {
-    'org':      fn_org,
-    'db':       fn_dc,
-    'dw':       fn_dw,
-    'include':  fn_include
-}
-
-
-
 #   ----------------------------------------------------------------
 #   Symbol management
 #   ----------------------------------------------------------------
@@ -160,6 +138,12 @@ def set( label, value ):
     gSymbolState[scope][label] = True
 
 
+def setScope( label ):
+    global gScope
+    if not label.startswith( '.' ):
+        gScope = label
+
+
 def isDefined( label ):
     global gSymbol, gScope
 
@@ -178,6 +162,39 @@ def get( label ):
     else:
         #xxx mark referenced
         return gSymbol[label][label]
+
+
+#   ----------------------------------------------------------------
+#   Pseudo ops
+#   ----------------------------------------------------------------
+
+def fn_org( tokenizer ):
+    global gLoc
+    org = eval.Expression( tokenizer ).eval()
+    if org == None:
+        raise Exception( "Undefined expression" )
+    gLoc = org
+    print "gLoc=", gLoc
+
+def fn_dc( tokenizer ):
+    pass
+
+
+def fn_dw( tokenizer ):
+    pass
+
+
+def fn_include( tokenizer ):
+    pass
+
+
+gPsuedoOps = {
+    'org':      fn_org,
+    'db':       fn_dc,
+    'dw':       fn_dw,
+    'include':  fn_include
+}
+
 
 
 #
@@ -288,9 +305,16 @@ def assembleInstruction( op, tokenizer ):
     #xxx otherwise do worst case, remember fixup
 
 
-def assembleLine( line ):
+#
+#   Handle a line of assembly input
+#
+#   Phase 0:    just intern stuff
+#   Phase 1:    emit stuff (expressions required to be defined)
+#
+def assembleLine( line, phaseNumber=0 ):
+    global gLoc
+    
     tokenizer = tok.Tokenizer( line )
-    # leadingWhitespace, tokens, tokenValues = tok.tokenize( line )
 
     #
     #   SYMBOL = VALUE
@@ -302,10 +326,12 @@ def assembleLine( line ):
         if not tokenizer.atEnd():
             raise Exception( "Bad expression (extra gunk)" )
 
-        #xxx TODO: see if expression is valid during pass 2? just
-        #save expr?
+        value = expr.eval()
+
+        if phaseNumber > 0 and value == None:
+            raise Exception( str.format( "Undefined expression" ) )
         
-        set( tokenizer.curValue(), expr.eval() )
+        set( sym, expr.eval() )
         return
         
     #
@@ -314,15 +340,27 @@ def assembleLine( line ):
     #   instead of that.
     #
     if tokenizer.curTok() == tok.SYMBOL and tokenizer.peek(1) == ':':
-        set( tokenizer.curValue(), gLoc )
+        sym = tokenizer.curValue()
         tokenizer.advance( 2 )
+
+        if phaseNumber == 0:
+            set( sym, gLoc )
+            
+        else:
+            #
+            #   check that the symbol has the same value in
+            #   subsequent phases
+            #
+            setScope( sym )
+            if get( sym ) != gLoc:
+                raise Exception( str.format( "Symbol phase error (expected {0}, have {1})", get(sym), gLoc ) )
 
     #
     #   handle ops
     #
     if tokenizer.curTok() == tok.SYMBOL:
 
-        op = tokenizer.curTok()
+        op = tokenizer.curValue()
         tokenizer.advance()
         
         if op in gPsuedoOps:
@@ -334,9 +372,16 @@ def assembleLine( line ):
 
 
 def test():
-    assert assembleLine( 'label:' ) == None
-    assert assembleLine( '.label:' ) == None
-    assert assembleLine( 'symbol = 42' ) == None
+    assembleLine( 'label:', 0 )
+    assembleLine( 'label:', 1 )
+    assembleLine( '.label:', 0)
+    assembleLine( '.label:', 1)
+    assembleLine( 'symbol = 42', 0 )
+
+    assembleLine( ' org $1000', 0 )
+    assembleLine( ' org $1000 + 100', 0 )
+    assembleLine( ' org $1000 / 0', 0 )
+    
 
     # more...
 

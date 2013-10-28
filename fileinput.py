@@ -1,10 +1,13 @@
 
 class FileInput:
 
-    def __init__( self ):
+    def __init__( self, filename=None ):
         self.m_filenames = []
         self.m_lines = []
         self.m_lineIndices = []
+
+        if filename:
+            self.push( filename )
 
     def push( self, filename ):
         try:

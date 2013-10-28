@@ -1,8 +1,12 @@
 #
 #   6502 assembler
 #
+
 import tok
 import eval
+import fileinput
+import sys
+
 
 #
 #   Opcodes and addressing modes
@@ -198,13 +202,13 @@ gPsuedoOps = {
 
 
 #
-#   parseAddressingMode ==> addrMode, value, valueAttrs, tokenIndex
+#   parseAddressingMode ==> addrMode, expressionObject
 #
 
 def parseAddressingMode( tokenizer ):
 
     if tokenizer.atEnd():
-        return IMPLIED, None, None
+        return IMPLIED, None
 
     if tokenizer.curTok() == '#':
         tokenizer.advance()
@@ -300,6 +304,9 @@ def rememberOp( op, valueAttrs, size ):
 
 def assembleInstruction( op, tokenizer ):
     addrMode, expr = parseAddressingMode( tokenizer )
+    value = expr.eval()
+
+    
 
     #xxx if value defined, do addr mode conversions for op
     #xxx otherwise do worst case, remember fixup
@@ -371,6 +378,38 @@ def assembleLine( line, phaseNumber=0 ):
             raise Exception( str.format( 'Unknown op: {0}', op ) )
 
 
+def assembleFile( filename ):
+    for phase in range(0,2):
+        input = None
+
+        try:
+            input = fileinput.FileInput( filename )
+        except:
+            print "Error: {0}", sys.exc_value
+            return
+
+        try:
+            while True:
+                line = input.nextLine()
+                if not line:
+                    break
+                assembleLine( line, phase )
+        except:
+            err = str.format("Error: {0}({1}): {2}",
+                input.file(),
+                input.line(),
+                sys.exc_value )
+            print err
+            raise #xxx
+
+
+def dumpSymbols():
+    for scope in gSymbol:
+        print str.format("{0:20} {1}", scope, gSymbol[scope][scope] )
+        for localSymbol in gSymbol[scope]:
+            if localSymbol != scope:
+                print str.format("    {0:20} {1}", localSymbol, gSymbol[scope][localSymbol] )
+
 def test():
     assembleLine( 'label:', 0 )
     assembleLine( 'label:', 1 )
@@ -380,8 +419,12 @@ def test():
 
     assembleLine( ' org $1000', 0 )
     assembleLine( ' org $1000 + 100', 0 )
-    assembleLine( ' org $1000 / 0', 0 )
+
+    assembleFile( 'test.asm' )
     
+    print "----------------"
+    print "Symbols:"
+    dumpSymbols()
 
     # more...
 

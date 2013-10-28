@@ -89,7 +89,7 @@ def isSymbolContinuation ( s ):
 
 
 def skipspace( s, i ):
-    while i < len(s) and isSpace( s[i] ):
+    while i < len(s) and (isSpace( s[i] ) or s[i] == '\n'):
         i = i + 1
     return i
 

@@ -49,6 +49,20 @@ UNDECIDED_X = 12        # ABSX / ZPX
 UNDECIDED_Y = 13        # ABSY / ZPY
 UNDECIDED = 14          # ABS / ZP / REL
 
+gAddrModeToByteCount = {
+    IMPLIED: 0,
+    IMMED: 1,
+    ABS: 2,
+    ZP: 1,
+    ABSX: 2,
+    ABSY: 2,
+    IND: 2,
+    REL: 1,
+    ZPX: 1,
+    ZPY: 1,
+    INDX: 1,
+    INDY: 1
+    }
 
 gOps = {
     'adc': {  IMMED: 0x69, ABS: 0x6d, ZP: 0x65, INDX: 0x61, INDY: 0x71, ZPX: 0x75, ABSX: 0x7d, ABSY: 0x79 },
@@ -127,6 +141,8 @@ gLoc = 0
 def set( label, value ):
     global gSymbol, gScope
     scope = None
+
+    print "set", label, value
 
     if label.startswith( '.' ):
         scope = gScope
@@ -281,35 +297,80 @@ def parseAddressingMode( tokenizer ):
 #   Image construction
 #   ----------------------------------------------------------------
 
-def depositByte( byte, fixup=None ):
-    pass
+
+gMemory = [None] * 65536
 
 
-def depositWord( word, fixup=None ):
-    pass
+def depositByte( byte ):
+    global gLoc
+    print "DEP ", gLoc, byte
+    gMemory[gLoc] = byte & 0xff
+    gLoc += 1
+    if gLoc >= 0x10000:
+        gLoc = 0
+
+def depositWord( word ):
+    depositByte( word )
+    depositByte( word >> 8 )
     
-
-def depositOp( op, arg, argSize ):
-    pass
-
-
-def rememberOp( op, valueAttrs, size ):
-    deposit( op )
-    remember( valueAttrs, size )
-
 
 #   ----------------------------------------------------------------
 #   Assembly
 #   ----------------------------------------------------------------
 
-def assembleInstruction( op, tokenizer ):
+def depositImpliedArg( expr, value ):
+    pass
+
+def depositByteArg( expr, value ):
+    pass
+
+def depositAbsArg( expr, value ):
+    pass
+
+def depositRelArg( expr, value ):
+    pass
+
+gDepositDispatch = {
+    IMPLIED: depositImpliedArg,
+    IMMED: depositByteArg,
+    ABS: depositAbsArg,
+    ZP: depositByteArg,
+    ABSX: depositAbsArg,
+    ABSY: depositAbsArg,
+    IND: depositAbsArg,
+    REL: depositRelArg,
+    ZPX: depositByteArg,
+    ZPY: depositByteArg,
+    INDX: depositByteArg,
+    INDY: depositByteArg
+    }
+
+
+def assembleInstruction( op, tokenizer, phaseNumber ):
     addrMode, expr = parseAddressingMode( tokenizer )
-    value = expr.eval()
 
+    value = None
+    if expr != None:
+        value = expr.eval()
+        
+    print op, phaseNumber, value
+    if expr:
+        print expr.m_postfix
+    dumpSymbols()
+    if phaseNumber > 0 and value == None:
+        raise Exception( "Undefined expression" )
     
+    #   if there's an exact match for (op, addrMode) then assemble it
 
-    #xxx if value defined, do addr mode conversions for op
-    #xxx otherwise do worst case, remember fixup
+    if addrMode in gOps[op]:
+        depositByte( gOps[op][addrMode] )
+        gDepositDispatch[addrMode]( expr, value )
+
+    else:
+        pass
+
+        # various cases of UNDECIDED stuff
+        # remember which are which, by address?
 
 
 #
@@ -373,7 +434,7 @@ def assembleLine( line, phaseNumber=0 ):
         if op in gPsuedoOps:
             gPsuedoOps[op]( tokenizer )
         elif op in gOps:
-            assembleInstruction( op, tokenizer )
+            assembleInstruction( op, tokenizer, phaseNumber )
         else:
             raise Exception( str.format( 'Unknown op: {0}', op ) )
 

@@ -1,5 +1,7 @@
 #
 #   6502 assembler
+#   Copyright 2013 Landon Dyer
+#   BSD License
 #
 
 import tok

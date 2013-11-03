@@ -11,6 +11,10 @@ import eval
 import fileinput
 import symbols
 
+
+gListing = True
+
+
 #
 #   Opcodes and addressing modes
 #
@@ -245,20 +249,74 @@ def parseAddressingMode( tokenizer ):
 
 
 gMemory = [None] * 65536
+gThisLine = []
+
+
+def clearLineBytes():
+    global gThisLine
+    gThisLine = []
 
 
 def depositByte( byte ):
-    global gLoc
-    print "DEP ", gLoc, byte
+    global gLoc, gThisLine
+
+    #xxx print "DEP ", gLoc, byte
     gMemory[gLoc] = byte & 0xff
+    gThisLine.append( byte & 0xff )
     gLoc += 1
     if gLoc >= 0x10000:
         gLoc = 0
 
+
 def depositWord( word ):
     depositByte( word )
     depositByte( word >> 8 )
+
+
+def dump(ar, start, end ):
+    s = ''
+    ascii = ''
+    j = 0
+
+    for i in range( start, end ):
+        v = 0
+        if ar[i] != None:
+            v = ar[i]
+
+        if j > 0:
+            s += ' '
+
+        if j == 8:
+            s += ' '
+
+        s += str.format('{0:02x}', v)
+
+        if v >= ord(' ') and v <= 0x7f:
+            ascii += chr( v )
+        else:
+            ascii += '.'
+
+        j = j + 1
+
+    return s, ascii
+
+
+def dumpMem():
+    global gMemory
     
+    def probe( start, end ):
+        for i in range(start, end):
+            if gMemory[i] != None:
+                return True
+        return False
+
+    i = 0
+    while i < 0x10000:
+        if probe(i, i + 16):
+            s, ascii = dump(gMemory, i, i+16)
+            print str.format('{0:04x}  {1}  {2}', i, s, ascii )
+        i += 0x10
+
 
 #   ----------------------------------------------------------------
 #   Assembly
@@ -308,21 +366,48 @@ def assembleInstruction( op, tokenizer, phaseNumber ):
         
     if phaseNumber > 0 and value == None and addrMode != IMPLIED:
         raise Exception( "Undefined expression" )
-    
-    #   if there's an exact match for (op, addrMode) then assemble it
+
+    #
+    #   Translate UNDECIDED into various forms of REL / ZP / ABS
+    #
+    if not addrMode in gOps[op]:
+
+        if addrMode == UNDECIDED:
+
+            if REL in gOps[op]:
+                addrMode = REL
+            elif ZP in gOps[op] and value != None and value < 0x100:
+                addrMode = ZP
+            else:
+                addrMode = ABS
+
+        elif addrMode == UNDECIDED_X:
+
+            if ZP_X in gOps[op] and value != None and value < 0x100:
+                addrMode = ZP_X
+            else:
+                addrMode = ABS_X
+
+        elif addrMode == UNDECIDED_Y:
+
+            if ZP_Y in gOps[op] and value != None and value < 0x100:
+                addrMode = ZP_Y
+            else:
+                addrMode = ABS_Y
 
     if addrMode in gOps[op]:
+
         depositByte( gOps[op][addrMode] )
         gDepositDispatch[addrMode]( expr, value )
 
     else:
-        #
-        #   UNDECIDED => REL / ZP / ABS
-        #
-        pass
 
-        # various cases of UNDECIDED stuff
-        # remember which are which, by address?
+        raise Exception( "Bad addressing mode for instruction" )
+
+
+def generateListingLine( line ):
+    s, ascii = dump(gThisLine, 0, len(gThisLine))
+    print str.format( "{0:10} {1}", s, line )
 
 
 #
@@ -334,6 +419,7 @@ def assembleInstruction( op, tokenizer, phaseNumber ):
 def assembleLine( line, phaseNumber=0 ):
     global gLoc
     
+    clearLineBytes()
     tokenizer = tok.Tokenizer( line )
 
     #
@@ -390,6 +476,9 @@ def assembleLine( line, phaseNumber=0 ):
         else:
             raise Exception( str.format( 'Unknown op: {0}', op ) )
 
+    if gListing and phaseNumber > 0:
+        generateListingLine( line )
+
 
 def assembleFile( filename ):
     for phase in range(0,2):
@@ -431,7 +520,7 @@ def test():
     print "----------------"
     print "Symbols:"
     symbols.dumpSymbols()
-
+    dumpMem()
     # more...
 
 if __name__ == '__main__':

@@ -1,3 +1,5 @@
+        include "test.inc"
+
 gMyGlobal   =   $40
 
 
@@ -19,3 +21,14 @@ start:  lda     #123
 .loop:  adc     #1
         bcc     .loop
         rts
+
+
+kongb   =     $80
+
+pckong:
+	tax				; kongb ~= A
+	eor	kongb
+	sta	kongb
+	txa
+
+

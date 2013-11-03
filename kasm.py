@@ -209,8 +209,13 @@ def fn_dw( tokenizer, phaseNumber ):
             tokenizer.advance()
 
 
-def fn_include( tokenizer ):
-    pass
+def fn_include( tokenizer, phaseNumber ):
+
+    if tokenizer.curTok() == tok.STRING or tokenizer.curTok() == tok.SYMBOL:
+        gInput.push( tokenizer.curValue() )
+        tokenizer.advance()
+    else:
+        raise Exception( "Expected filename" )
 
 
 gPsuedoOps = {

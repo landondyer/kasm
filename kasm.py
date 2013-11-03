@@ -13,6 +13,8 @@ import symbols
 
 
 gListingFile = None
+gInput = None
+gPriorFile = None
 
 
 #
@@ -459,22 +461,33 @@ def assembleInstruction( op, tokenizer, phaseNumber ):
 
 
 def generateListingLine( line ):
-    global gListingFile
-    
-    i = 0
-    while i < len( gThisLine ):
-        n = len( gThisLine ) - i
-        if n > 8:
-            n = 8
+    global gListingFile, gPriorFile
 
-        s, ascii = dump( gThisLine, i, i + n )
+    if gInput.file() != gPriorFile:
+        gListingFile.write( str.format( "File {0}\n", gInput.file() ) )
+        gPriorFile = gInput.file()
 
-        if i == 0:
-            gListingFile.write( str.format( "{0:30} {1}", s, line ) )
-        else:
-            gListingFile.write( str.format( "{0:10}\n", s ) )
+    prefix = str.format( "{0:5}: ", gInput.line() )
 
-        i += n
+    if len( gThisLine ) > 0:
+        i = 0
+        while i < len( gThisLine ):
+            n = len( gThisLine ) - i
+            if n > 8:
+                n = 8
+
+            s, ascii = dump( gThisLine, i, i + n )
+
+            if i == 0:
+                gListingFile.write( str.format( "{0} {1:30} {2}", prefix, s, line ) )
+            else:
+                gListingFile.write( str.format( "{0} {1:10}\n", prefix, s ) )
+
+            i += n
+
+    else:
+
+        gListingFile.write( str.format( "{0} {1:30} {2}", prefix, "", line ) )
 
 
 #
@@ -505,6 +518,10 @@ def assembleLine( line, phaseNumber=0 ):
             raise Exception( str.format( "Undefined expression" ) )
         
         symbols.set( sym, expr.eval() )
+
+        if gListingFile != None and phaseNumber > 0:
+            generateListingLine( line )
+
         return
         
     #
@@ -548,27 +565,29 @@ def assembleLine( line, phaseNumber=0 ):
 
 
 def assembleFile( filename ):
+    global gInput, gPriorFile
+    
     symbols.clear()
+    gPriorFile = None
     
     for phase in range(0,2):
-        input = None
 
         try:
-            input = fileinput.FileInput( filename )
+            gInput = fileinput.FileInput( filename )
         except:
             print "Error: {0}", sys.exc_value
             return
 
         try:
             while True:
-                line = input.nextLine()
+                line = gInput.nextLine()
                 if not line:
                     break
                 assembleLine( line, phase )
         except:
             err = str.format("Error: {0}({1}): {2}",
-                input.file(),
-                input.line(),
+                gInput.file(),
+                gInput.line(),
                 sys.exc_value )
             print err
 

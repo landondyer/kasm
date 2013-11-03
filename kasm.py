@@ -4,11 +4,12 @@
 #   BSD License
 #
 
+import sys
+
 import tok
 import eval
 import fileinput
-import sys
-
+import symbols
 
 #
 #   Opcodes and addressing modes
@@ -126,64 +127,7 @@ gOps = {
 }
 
 
-#   ----------------------------------------------------------------
-#   Symbol management
-#   ----------------------------------------------------------------
-
-#
-#   { '<name>':   { '<name>': value, '.subname': value ... } ... }
-#
-gSymbol = {}
-gSymbolState = {}
-gScope = None
-
 gLoc = 0
-
-
-def set( label, value ):
-    global gSymbol, gScope
-    scope = None
-
-    print "set", label, value
-
-    if label.startswith( '.' ):
-        scope = gScope
-    else:
-        gScope = label
-        scope = label
-
-    if not scope in gSymbol:
-        gSymbol[scope] = {}
-        gSymbolState[scope] = {}
-
-    gSymbol[scope][label] = value
-    gSymbolState[scope][label] = True
-
-
-def setScope( label ):
-    global gScope
-    if not label.startswith( '.' ):
-        gScope = label
-
-
-def isDefined( label ):
-    global gSymbol, gScope
-
-    if label.startswith( '.' ):
-        return gScope and gScope in gSymbol and label in gSymbol[gScope]
-    else:
-        return label in gSymbol and label in gSymbol[label]
-
-
-def get( label ):
-    global gSymbol, gScope
-
-    if label.startswith( '.' ):
-        #xxx mark referenced
-        return gSymbol[gScope][label]
-    else:
-        #xxx mark referenced
-        return gSymbol[label][label]
 
 
 #   ----------------------------------------------------------------
@@ -324,13 +268,20 @@ def depositImpliedArg( expr, value ):
     pass
 
 def depositByteArg( expr, value ):
-    pass
+    depositByte( value )
 
 def depositAbsArg( expr, value ):
-    pass
+    depositWord( value )
 
 def depositRelArg( expr, value ):
-    pass
+    global gLoc
+    fromLoc = gLoc + 1
+    delta = value - fromLoc
+
+    if delta < -128 or delta > 127:
+        raise Exception( str.format( "relative reference out of range ({0})", distance ) )
+    depositByte( delta )
+    
 
 gDepositDispatch = {
     IMPLIED: depositImpliedArg,
@@ -355,11 +306,7 @@ def assembleInstruction( op, tokenizer, phaseNumber ):
     if expr != None:
         value = expr.eval()
         
-    print op, phaseNumber, value
-    if expr:
-        print expr.m_postfix
-    dumpSymbols()
-    if phaseNumber > 0 and value == None:
+    if phaseNumber > 0 and value == None and addrMode != IMPLIED:
         raise Exception( "Undefined expression" )
     
     #   if there's an exact match for (op, addrMode) then assemble it
@@ -369,6 +316,9 @@ def assembleInstruction( op, tokenizer, phaseNumber ):
         gDepositDispatch[addrMode]( expr, value )
 
     else:
+        #
+        #   UNDECIDED => REL / ZP / ABS
+        #
         pass
 
         # various cases of UNDECIDED stuff
@@ -401,7 +351,7 @@ def assembleLine( line, phaseNumber=0 ):
         if phaseNumber > 0 and value == None:
             raise Exception( str.format( "Undefined expression" ) )
         
-        set( sym, expr.eval() )
+        symbols.set( sym, expr.eval() )
         return
         
     #
@@ -414,16 +364,16 @@ def assembleLine( line, phaseNumber=0 ):
         tokenizer.advance( 2 )
 
         if phaseNumber == 0:
-            set( sym, gLoc )
+            symbols.set( sym, gLoc )
             
         else:
             #
             #   check that the symbol has the same value in
             #   subsequent phases
             #
-            setScope( sym )
-            if get( sym ) != gLoc:
-                raise Exception( str.format( "Symbol phase error (expected {0}, have {1})", get(sym), gLoc ) )
+            symbols.setScope( sym )
+            if symbols.get( sym ) != gLoc:
+                raise Exception( str.format( "Symbol phase error (expected {0}, have {1})", symbols.get(sym), gLoc ) )
 
     #
     #   handle ops
@@ -466,13 +416,6 @@ def assembleFile( filename ):
             raise #xxx
 
 
-def dumpSymbols():
-    for scope in gSymbol:
-        print str.format("{0:20} {1}", scope, gSymbol[scope][scope] )
-        for localSymbol in gSymbol[scope]:
-            if localSymbol != scope:
-                print str.format("    {0:20} {1}", localSymbol, gSymbol[scope][localSymbol] )
-
 def test():
     assembleLine( 'label:', 0 )
     assembleLine( 'label:', 1 )
@@ -487,7 +430,7 @@ def test():
     
     print "----------------"
     print "Symbols:"
-    dumpSymbols()
+    symbols.dumpSymbols()
 
     # more...
 

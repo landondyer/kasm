@@ -1,4 +1,4 @@
-import kasm
+import symbols
 import tok
 
 
@@ -16,8 +16,8 @@ class Expression:
         symbol = self.m_postfix[ self.m_index]
         self.m_index = self.m_index + 1
 
-        if kasm.isDefined( symbol ):
-            self.m_stack.append( kasm.get( symbol ) )
+        if symbols.isDefined( symbol ):
+            self.m_stack.append( symbols.get( symbol ) )
         else:
             self.m_undefined = True
             self.m_stack.append( 1 )
@@ -244,11 +244,11 @@ def test():
     testExpr( "! 1" )
     testExpr( "! 0" )
 
-    kasm.set( "foo", 42 )
+    symbols.set( "foo", 42 )
     testExpr( "foo" )
     testExpr( "foo + foo * 100 * foo" )
 
-    kasm.set( "bar", 0x10000 )
+    symbols.set( "bar", 0x10000 )
     testExpr( "bar - 1" )
 
     testExpr( "notYetDefined" )

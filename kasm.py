@@ -12,7 +12,7 @@ import fileinput
 import symbols
 
 
-gListing = True
+gListingFile = None
 
 
 #
@@ -138,20 +138,73 @@ gLoc = 0
 #   Pseudo ops
 #   ----------------------------------------------------------------
 
-def fn_org( tokenizer ):
+def fn_org( tokenizer, phaseNumber ):
     global gLoc
     org = eval.Expression( tokenizer ).eval()
     if org == None:
         raise Exception( "Undefined expression" )
     gLoc = org
-    print "gLoc=", gLoc
-
-def fn_dc( tokenizer ):
-    pass
 
 
-def fn_dw( tokenizer ):
-    pass
+def fn_db( tokenizer, phaseNumber ):
+    while not tokenizer.atEnd():
+
+        if tokenizer.curTok() == tok.STRING:
+
+            s = tokenizer.curValue()
+            for c in s:
+                depositByte( ord( c ) )
+
+            tokenizer.advance()
+
+        else:
+
+            expr = eval.Expression( tokenizer )
+
+            value = expr.eval()
+            if phaseNumber > 0:
+                if value > 0xff or value < -128:
+                    raise Exception( "value too large for a byte" )
+                depositByte( value )
+
+            else:
+                depositByte( 0 )
+
+        if tokenizer.curTok() != ',':
+            break
+        else:
+            tokenizer.advance()
+
+
+def fn_dw( tokenizer, phaseNumber ):
+
+    while not tokenizer.atEnd():
+
+        if tokenizer.curTok() == tok.STRING:
+
+            s = tokenizer.curValue()
+            for c in s:
+                depositWord( ord( c ) )
+
+            tokenizer.advance()
+
+        else:
+
+            expr = eval.Expression( tokenizer )
+
+            value = expr.eval()
+            if phaseNumber > 0:
+                if value > 0xffff or value < -32768:
+                    raise Exception( "value too large for a word" )
+                depositWord( value )
+
+            else:
+                depositWord( 0 )
+
+        if tokenizer.curTok() != ',':
+            break
+        else:
+            tokenizer.advance()
 
 
 def fn_include( tokenizer ):
@@ -160,7 +213,7 @@ def fn_include( tokenizer ):
 
 gPsuedoOps = {
     'org':      fn_org,
-    'db':       fn_dc,
+    'db':       fn_db,
     'dw':       fn_dw,
     'include':  fn_include
 }
@@ -406,8 +459,22 @@ def assembleInstruction( op, tokenizer, phaseNumber ):
 
 
 def generateListingLine( line ):
-    s, ascii = dump(gThisLine, 0, len(gThisLine))
-    print str.format( "{0:10} {1}", s, line )
+    global gListingFile
+    
+    i = 0
+    while i < len( gThisLine ):
+        n = len( gThisLine ) - i
+        if n > 8:
+            n = 8
+
+        s, ascii = dump( gThisLine, i, i + n )
+
+        if i == 0:
+            gListingFile.write( str.format( "{0:30} {1}", s, line ) )
+        else:
+            gListingFile.write( str.format( "{0:10}\n", s ) )
+
+        i += n
 
 
 #
@@ -470,17 +537,19 @@ def assembleLine( line, phaseNumber=0 ):
         tokenizer.advance()
         
         if op in gPsuedoOps:
-            gPsuedoOps[op]( tokenizer )
+            gPsuedoOps[op]( tokenizer, phaseNumber )
         elif op in gOps:
             assembleInstruction( op, tokenizer, phaseNumber )
         else:
             raise Exception( str.format( 'Unknown op: {0}', op ) )
 
-    if gListing and phaseNumber > 0:
+    if gListingFile != None and phaseNumber > 0:
         generateListingLine( line )
 
 
 def assembleFile( filename ):
+    symbols.clear()
+    
     for phase in range(0,2):
         input = None
 
@@ -502,7 +571,49 @@ def assembleFile( filename ):
                 input.line(),
                 sys.exc_value )
             print err
-            raise #xxx
+
+
+def handleListing( filename ):
+    global gListingFile
+    gListingFile = open( filename, "w" )
+
+
+gCommands = {
+    '-l':   { 'handler': handleListing, 'count': 1 }
+    }
+
+
+def main( argv ):
+    global gCommands
+    
+    argno = 1
+    while argno < len( argv ):
+
+        arg = argv[argno].lower()
+
+        if arg in gCommands:
+            count = 0
+            if 'count' in gCommands[arg]:
+                count = gCommands[arg]['count']
+                if argno + count >= len( argv ):
+                    raise Exception( str.format( "Not enough arguments for {0}", arg ) )
+
+                args = argv[argno + 1 : argno + count + 1]
+                argno += count + 1
+                gCommands[arg]['handler'](*args)
+            else:
+                argno += 1
+                gCommands[arg]['handler']()
+                
+        elif arg.startswith( '-' ):
+            
+            raise Exception( str.format( "Unknown option {0}", arg ) )
+
+        else:
+            
+            argno += 1
+            assembleFile( arg )
+            dumpMem()
 
 
 def test():
@@ -524,4 +635,9 @@ def test():
     # more...
 
 if __name__ == '__main__':
-    test()
+    try:
+        main( sys.argv )
+        # test()
+    except:
+        err = str.format( "Error: {0}", sys.exc_value )
+        print err

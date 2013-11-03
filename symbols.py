@@ -12,11 +12,17 @@ gScope = None
 gLoc = 0
 
 
+def clear():
+    global gSymbol, gScope
+    gSymbol = {}
+    gSymbolState = {}
+    gScope = None
+    gLoc = 0
+
+
 def set( label, value ):
     global gSymbol, gScope
     scope = None
-
-    print "set", label, value
 
     if label.startswith( '.' ):
         scope = gScope

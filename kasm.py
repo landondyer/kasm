@@ -210,6 +210,15 @@ def fn_dw( tokenizer, phaseNumber ):
             tokenizer.advance()
 
 
+def fn_ds( tokenizer, phaseNumber ):
+    global gLoc
+    
+    value = eval.Expression( tokenizer ).eval()
+    if value == None:
+        raise Exception( "Undefined expression" )
+    gLoc += value
+
+
 def fn_include( tokenizer, phaseNumber ):
 
     if tokenizer.curTok() == tok.STRING or tokenizer.curTok() == tok.SYMBOL:
@@ -223,6 +232,7 @@ gPsuedoOps = {
     'org':      fn_org,
     'db':       fn_db,
     'dw':       fn_dw,
+    'ds':       fn_ds,
     'include':  fn_include
 }
 

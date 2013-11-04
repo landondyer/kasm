@@ -357,7 +357,7 @@ def dump(ar, start, end ):
         if j == 8:
             s += ' '
 
-        s += str.format('{0:02x}', v)
+        s += str.format('{0:02X}', v)
 
         if v >= ord(' ') and v <= 0x7f:
             ascii += chr( v )
@@ -382,7 +382,7 @@ def dumpMem():
     while i < 0x10000:
         if probe(i, i + 16):
             s, ascii = dump(gMemory, i, i+16)
-            print str.format('{0:04x}  {1}  {2}', i, s, ascii )
+            print str.format('{0:04X}  {1}  {2}', i, s, ascii )
         i += 0x10
 
 
@@ -487,6 +487,7 @@ def generateListingLine( line ):
         gPriorFile = gInput.file()
 
     prefix = str.format( "{0:5}: ", gInput.line() )
+    baseAddr = gLoc - len( gThisLine )
 
     if len( gThisLine ) > 0:
         i = 0
@@ -498,9 +499,9 @@ def generateListingLine( line ):
             s, ascii = dump( gThisLine, i, i + n )
 
             if i == 0:
-                gListingFile.write( str.format( "{0} {1:30} {2}", prefix, s, line ) )
+                gListingFile.write( str.format( "{0} {1:04X}  {2:30} {3}", prefix, baseAddr + i, s, line ) )
             else:
-                gListingFile.write( str.format( "{0} {1:10}\n", prefix, s ) )
+                gListingFile.write( str.format( "{0} {1:04X}  {2:10}\n", prefix, baseAddr + i, s ) )
 
             i += n
 

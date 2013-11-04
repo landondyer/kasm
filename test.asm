@@ -15,6 +15,9 @@ gronk = 0xfe
         dw      1234, 0, 0xffff, 0x8000, -32768
         dw      'this is unicode?'
 
+        jsr     start
+        nop
+        nop
 start:  lda     #123
         stx     gMyGlobal
 

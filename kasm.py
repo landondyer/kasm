@@ -10,6 +10,7 @@ import tok
 import eval
 import fileinput
 import symbols
+import traceback
 
 
 gListingFile = None
@@ -293,10 +294,10 @@ def parseAddressingMode( tokenizer ):
         if tokenizer.curTok() == tok.SYMBOL:
             if tokenizer.curValue().lower() == 'x':
                 return UNDECIDED_X, expr
-            elif tokenValues.curValue().lower() == 'y':
+            elif tokenizer.curValue().lower() == 'y':
                 return UNDECIDED_Y, expr
             else:
-                raise Exception( str.format( "Unxpected symbol {0} following expression", tokenValues[ tokenIndex] ) )
+                raise Exception( str.format( "Unxpected symbol {0} following expression", tokenizer.curValue() ) )
         else:
             raise Exception( "Unxpected gunk following expression" )
 
@@ -320,6 +321,9 @@ def clearLineBytes():
 def depositByte( byte ):
     global gLoc, gThisLine
 
+    if byte == None:
+        byte = 0
+
     #xxx print "DEP ", gLoc, byte
     gMemory[gLoc] = byte & 0xff
     gThisLine.append( byte & 0xff )
@@ -329,6 +333,10 @@ def depositByte( byte ):
 
 
 def depositWord( word ):
+
+    if word == None:
+        word = 0
+
     depositByte( word )
     depositByte( word >> 8 )
 
@@ -393,12 +401,18 @@ def depositAbsArg( expr, value ):
 
 def depositRelArg( expr, value ):
     global gLoc
-    fromLoc = gLoc + 1
-    delta = value - fromLoc
 
-    if delta < -128 or delta > 127:
-        raise Exception( str.format( "relative reference out of range ({0})", distance ) )
-    depositByte( delta )
+    if value != None:
+        fromLoc = gLoc + 1
+        delta = value - fromLoc
+
+        if delta < -128 or delta > 127:
+            raise Exception( str.format( "relative reference out of range ({0})", distance ) )
+        depositByte( delta )
+
+    else:
+
+        depositByte( 0 )
     
 
 gDepositDispatch = {
@@ -443,17 +457,17 @@ def assembleInstruction( op, tokenizer, phaseNumber ):
 
         elif addrMode == UNDECIDED_X:
 
-            if ZP_X in gOps[op] and value != None and value < 0x100:
-                addrMode = ZP_X
+            if ZPX in gOps[op] and value != None and value < 0x100:
+                addrMode = ZPX
             else:
-                addrMode = ABS_X
+                addrMode = ABSX
 
         elif addrMode == UNDECIDED_Y:
 
-            if ZP_Y in gOps[op] and value != None and value < 0x100:
-                addrMode = ZP_Y
+            if ZPY in gOps[op] and value != None and value < 0x100:
+                addrMode = ZPY
             else:
-                addrMode = ABS_Y
+                addrMode = ABSY
 
     if addrMode in gOps[op]:
 
@@ -555,7 +569,7 @@ def assembleLine( line, phaseNumber=0 ):
     #
     if tokenizer.curTok() == tok.SYMBOL:
 
-        op = tokenizer.curValue()
+        op = tokenizer.curValue().lower()
         tokenizer.advance()
         
         if op in gPsuedoOps:
@@ -595,7 +609,7 @@ def assembleFile( filename ):
                 gInput.line(),
                 sys.exc_value )
             print err
-
+            # traceback.print_exc()
 
 def handleListing( filename ):
     global gListingFile

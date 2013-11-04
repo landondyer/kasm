@@ -1,12 +1,9 @@
 TODO
 
-[]  parse expressions
+[x]  parse expressions
 
-[]  parse addressing modes
-[]  assemble instruction
-[]  psuedo-ops
-[]  listing output
-[]  fixups
-        []  rememberFixup
-        []  applyFixes
-
+[x]  parse addressing modes
+[x]  assemble instruction
+[x]  psuedo-ops
+[x]  listing output
+[-]  fixups -- we're doing two phase assembly

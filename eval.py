@@ -188,6 +188,12 @@ class Expression:
                 self.m_postfix.append( self.doPushConst)
                 self.m_postfix.append( tokenizer.curValue() )
                 tokenizer.nextTok()
+            elif tokenizer.curTok() == tok.STRING:
+                if len(tokenizer.curValue()) != 1:
+                    raise Exception( 'String constants must be one character' )
+                self.m_postfix.append( self.doPushConst)
+                self.m_postfix.append( ord(tokenizer.curValue()[0]) )
+                tokenizer.nextTok()
             elif tokenizer.curTok() == '(':
                 tokenizer.advance()
                 parseHelper( len(self.m_operators) - 1)

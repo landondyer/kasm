@@ -59,21 +59,6 @@ UNDECIDED_X = 12        # ABSX / ZPX
 UNDECIDED_Y = 13        # ABSY / ZPY
 UNDECIDED = 14          # ABS / ZP / REL
 
-gAddrModeToByteCount = {
-    IMPLIED: 0,
-    IMMED: 1,
-    ABS: 2,
-    ZP: 1,
-    ABSX: 2,
-    ABSY: 2,
-    IND: 2,
-    REL: 1,
-    ZPX: 1,
-    ZPY: 1,
-    INDX: 1,
-    INDY: 1
-    }
-
 gOps = {
     'adc': {  IMMED: 0x69, ABS: 0x6d, ZP: 0x65, INDX: 0x61, INDY: 0x71, ZPX: 0x75, ABSX: 0x7d, ABSY: 0x79 },
     'and': {  IMMED: 0x29, ABS: 0x2d, ZP: 0x25, INDX: 0x21, INDY: 0x31, ZPX: 0x35, ABSX: 0x3d, ABSY: 0x39 },
@@ -417,7 +402,7 @@ def depositRelArg( expr, value ):
         delta = value - fromLoc
 
         if delta < -128 or delta > 127:
-            raise Exception( str.format( "relative reference out of range ({0})", distance ) )
+            raise Exception( str.format( "relative reference out of range ({0} bytes)", delta ) )
         depositByte( delta )
 
     else:
@@ -595,18 +580,24 @@ def assembleLine( line, phaseNumber=0 ):
 
 
 def assembleFile( filename ):
-    global gInput, gPriorFile
+    global gInput, gPriorFile, gLoc
     
     symbols.clear()
     gPriorFile = None
+    gotError = False
     
     for phase in range(0,2):
 
+        if gotError:
+            break
+            
         try:
             gInput = fileinput.FileInput( filename )
         except:
             print "Error: {0}", sys.exc_value
             return
+
+        gLoc = 0
 
         try:
             while True:
@@ -620,7 +611,10 @@ def assembleFile( filename ):
                 gInput.line(),
                 sys.exc_value )
             print err
+            gotError = True
             # traceback.print_exc()
+
+    return not gotError
 
 def handleListing( filename ):
     global gListingFile
@@ -661,8 +655,8 @@ def main( argv ):
         else:
             
             argno += 1
-            assembleFile( arg )
-            dumpMem()
+            if assembleFile( arg ):
+                dumpMem()
 
 
 def test():

@@ -1,7 +1,10 @@
 TODO
 
-[x]  parse expressions
+[]  '*' as psuedo-variable for PC
+[x]  test vectors
+[]  emit S records (whatever KIM-1 wants, i guess)
 
+[x]  parse expressions
 [x]  parse addressing modes
 [x]  assemble instruction
 [x]  psuedo-ops

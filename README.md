@@ -1,7 +1,7 @@
 kasm
 ====
 
-This is a simple two-pass 6502 assembler that I wrote for fun.
+This is a simple two-pass 6502 assembler that I wrote for fun. No warranty expressed or implied.
 
 It supports standard opcodes and opcode syntax. Binary output is in Kim-1 format.
 

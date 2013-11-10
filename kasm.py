@@ -1,7 +1,7 @@
 #
-#   6502 assembler
-#   Copyright 2013 Landon Dyer
-#   BSD License
+#   Simple 6502 assembler
+#   Writen by Landon Dyer
+#   ABRMS license
 #
 
 import sys

@@ -1,3 +1,11 @@
+#
+#   Expression evaluator
+#
+#   Constructor: Expression( tokenizer ), parses next expression
+#
+#   Subsequent calls to 'eval' cough up an integer value, or None
+#
+
 import symbols
 import tok
 

@@ -2,7 +2,7 @@ TODO
 
 []  '*' as psuedo-variable for PC
 [x]  test vectors
-[]  emit S records (whatever KIM-1 wants, i guess)
+[x]  emit S records (whatever KIM-1 wants, i guess)
 
 [x]  parse expressions
 [x]  parse addressing modes

@@ -11,6 +11,7 @@ import eval
 import fileinput
 import symbols
 import traceback
+import re
 
 
 gListingFile = None
@@ -336,51 +337,6 @@ def depositWord( word ):
     depositByte( word >> 8 )
 
 
-def dump(ar, start, end ):
-    s = ''
-    ascii = ''
-    j = 0
-
-    for i in range( start, end ):
-        v = 0
-        if ar[i] != None:
-            v = ar[i]
-
-        if j > 0:
-            s += ' '
-
-        if j == 8:
-            s += ' '
-
-        s += str.format('{0:02X}', v)
-
-        if v >= ord(' ') and v <= 0x7f:
-            ascii += chr( v )
-        else:
-            ascii += '.'
-
-        j = j + 1
-
-    return s, ascii
-
-
-def dumpMem():
-    global gMemory
-    
-    def probe( start, end ):
-        for i in range(start, end):
-            if gMemory[i] != None:
-                return True
-        return False
-
-    i = 0
-    while i < 0x10000:
-        if probe(i, i + 16):
-            s, ascii = dump(gMemory, i, i+16)
-            print str.format('{0:04X}  {1}  {2}', i, s, ascii )
-        i += 0x10
-
-
 #   ----------------------------------------------------------------
 #   Assembly
 #   ----------------------------------------------------------------
@@ -616,18 +572,107 @@ def assembleFile( filename ):
 
     return not gotError
 
-def handleListing( filename ):
-    global gListingFile
-    gListingFile = open( filename, "w" )
+
+def dump(ar, start, end ):
+    s = ''
+    ascii = ''
+    j = 0
+
+    for i in range( start, end ):
+        v = 0
+        if ar[i] != None:
+            v = ar[i]
+
+        if j > 0:
+            s += ' '
+
+        if j == 8:
+            s += ' '
+
+        s += str.format('{0:02X}', v)
+
+        if v >= ord(' ') and v <= 0x7f:
+            ascii += chr( v )
+        else:
+            ascii += '.'
+
+        j = j + 1
+
+    return s, ascii
+
+def dumpMem():
+    global gMemory
+
+    def probe( start, end ):
+        for i in range(start, end):
+            if gMemory[i] != None:
+                return True
+        return False
+
+    i = 0
+    while i < 0x10000:
+        if probe(i, i + 16):
+            s, ascii = dump(gMemory, i, i+16)
+            print str.format('{0:04X}  {1}  {2}', i, s, ascii )
+        i += 0x10
+
+
+def makeKim1Record( ar, start, end ):
+    record = str.format( ';{0:02X}{1:02X}{2:02X}',
+        end - start,
+        (start >> 8) & 0xff,
+        start & 0xff )
+    sum = 0
+
+    for i in range( start, end ):
+        v = 0
+        if ar[i] != None:
+            v = ar[i]
+        record += str.format( '{0:02X}', v )
+        sum += v
+
+    record += str.format( '{0:02X}{1:02X}\r\n', (sum >> 8) & 0xff, sum & 0xff )
+    return record
+
+
+def dumpKim1Records( filename, startAddress=0 ):
+    global gMemory
+
+    def probe( start, end ):
+        if end > 0x10000:
+            end = 0x10000
+            
+        for i in range(start, end):
+            if gMemory[i] != None:
+                return True
+        return False
+
+    outputFile = open( filename, 'wb' )
+
+    recordCount = 0
+    i = 0
+    while i < 0x10000:
+        if probe( i, i + 16 ):
+            outputFile.write( makeKim1Record( gMemory, i, i + 16 ) )
+            recordCount += 1
+        i += 16
+
+    outputFile.write( str.format( ';00{0:02X}{1:02X}{0:02X}{1:02X}\r\n',
+        (recordCount >> 8) & 0xff,
+        recordCount & 0xff )
+        )
+
+    outputFile.close()
 
 
 gCommands = {
-    '-l':   { 'handler': handleListing, 'count': 1 }
+    # 'foo': { 'handler': function, 'count': numberOfArguments }
     }
 
 
 def main( argv ):
     global gCommands
+    global gListingFile
     
     argno = 1
     while argno < len( argv ):
@@ -655,32 +700,28 @@ def main( argv ):
         else:
             
             argno += 1
+
+            match = re.match( ".*\.(.*)", arg )
+            if not match:
+                arg += ".asm"
+
+            match = re.match( "(.*\.).*", arg )
+            if not match:
+                raise Exception( "internal error flogging filenames" )
+
+            baseFile = match.group(1)
+            listingFile = baseFile + "lst"
+            outputFile = baseFile + "dat"
+
+            gListingFile = open( listingFile, "w" )
+
             if assembleFile( arg ):
-                dumpMem()
+                dumpKim1Records( outputFile )
 
-
-def test():
-    assembleLine( 'label:', 0 )
-    assembleLine( 'label:', 1 )
-    assembleLine( '.label:', 0)
-    assembleLine( '.label:', 1)
-    assembleLine( 'symbol = 42', 0 )
-
-    assembleLine( ' org $1000', 0 )
-    assembleLine( ' org $1000 + 100', 0 )
-
-    assembleFile( 'test.asm' )
-    
-    print "----------------"
-    print "Symbols:"
-    symbols.dumpSymbols()
-    dumpMem()
-    # more...
 
 if __name__ == '__main__':
     try:
         main( sys.argv )
-        # test()
     except:
         err = str.format( "Error: {0}", sys.exc_value )
         print err

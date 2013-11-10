@@ -198,6 +198,10 @@ class Expression:
                 tokenizer.advance()
                 parseHelper( len(self.m_operators) - 1)
                 tokenizer.expect( ')' )
+            elif tokenizer.curTok() == '*':
+                self.m_postfix.append( self.doPushSym )
+                self.m_postfix.append( '*' )
+                tokenizer.nextTok()
             else:
                 raise Exception( str.format( "unexpected token {0}", tokenizer.curTok() ) )
 

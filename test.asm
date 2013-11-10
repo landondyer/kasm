@@ -5,9 +5,13 @@ gMyGlobal   =   $40
 
         org     $200
 
+        dw      *
+        dw      *
+        dw      * + 0xffff
         db      1,2,3
 
         db      gronk
+
 
 gronk = 0xfe
 

@@ -183,8 +183,6 @@ def fn_dw( tokenizer, phaseNumber ):
 
             value = expr.eval()
             if phaseNumber > 0:
-                if value > 0xffff or value < -32768:
-                    raise Exception( "value too large for a word" )
                 depositWord( value )
 
             else:
@@ -472,6 +470,11 @@ def assembleLine( line, phaseNumber=0 ):
     
     clearLineBytes()
     tokenizer = tok.Tokenizer( line )
+
+    #
+    #   Set '*' psuedo-symbol at the start of each line
+    #
+    symbols.set( '*', gLoc )
 
     #
     #   SYMBOL = VALUE

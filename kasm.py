@@ -17,6 +17,7 @@ import re
 gListingFile = None
 gInput = None
 gPriorFile = None
+gDefines = {}
 
 
 #
@@ -211,6 +212,15 @@ def fn_include( tokenizer, phaseNumber ):
     else:
         raise Exception( "Expected filename" )
 
+define_p = r'\s?define\s+(\S+)\s+(\S+)'
+def fn_define(line):
+    m = re.search(define_p,line)
+    if m:
+        define,val = m.groups()[0:2]
+        gDefines.update({define:val})
+        return 0
+    else:
+        return 1
 
 gPsuedoOps = {
     'org':      fn_org,
@@ -218,6 +228,10 @@ gPsuedoOps = {
     'dw':       fn_dw,
     'ds':       fn_ds,
     'include':  fn_include
+}
+
+preOps = {
+    'define': fn_define
 }
 
 
@@ -467,6 +481,8 @@ def generateListingLine( line ):
 #
 def assembleLine( line, phaseNumber=0 ):
     global gLoc
+    for k,v in gDefines.items():
+        line = line.replace(k,v)
     
     clearLineBytes()
     tokenizer = tok.Tokenizer( line )
@@ -529,6 +545,9 @@ def assembleLine( line, phaseNumber=0 ):
         
         if op in gPsuedoOps:
             gPsuedoOps[op]( tokenizer, phaseNumber )
+        elif op in preOps:
+            if preOps[op](line):
+                raise Exception("define syntax error")
         elif op in gOps:
             assembleInstruction( op, tokenizer, phaseNumber )
         else:

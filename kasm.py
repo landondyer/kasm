@@ -650,7 +650,7 @@ def dumpKim1Records( filename, startAddress=0 ):
                 return True
         return False
 
-    outputFile = open( filename, 'wb' )
+    outputFile = open( filename, 'w' )
 
     recordCount = 0
     i = 0

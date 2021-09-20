@@ -66,9 +66,9 @@ def test():
     while True:
         line = filer.nextLine()
         if line:
-            print filer.file(), filer.line(), str.format("{0!r}", line)
+            print(filer.file(), filer.line(), str.format("{0!r}", line))
         else:
-            print "EOF"
+            print("EOF")
             break
 
 if __name__ == '__main__':

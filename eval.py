@@ -244,7 +244,7 @@ def test():
     def testExpr( expr ):
         t = tok.Tokenizer( expr )
         e = Expression( t )
-        print expr, " ==> ", e.eval()
+        print(expr, " ==> ", e.eval())
 
     testExpr( "42" )
     testExpr( "3 + 4" )

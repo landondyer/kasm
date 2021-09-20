@@ -318,7 +318,7 @@ def depositByte( byte ):
     if byte == None:
         byte = 0
 
-    #xxx print "DEP ", gLoc, byte
+    #xxx print("DEP ", gLoc, byte)
     gMemory[gLoc] = byte & 0xff
     gThisLine.append( byte & 0xff )
     gLoc += 1
@@ -553,7 +553,7 @@ def assembleFile( filename ):
         try:
             gInput = fileinput.FileInput( filename )
         except:
-            print "Error: {0}", sys.exc_value
+            print("Error: {0}", sys.exc_value)
             return
 
         gLoc = 0
@@ -569,7 +569,7 @@ def assembleFile( filename ):
                 gInput.file(),
                 gInput.line(),
                 sys.exc_value )
-            print err
+            print(err)
             gotError = True
             # traceback.print_exc()
 
@@ -616,7 +616,7 @@ def dumpMem():
     while i < 0x10000:
         if probe(i, i + 16):
             s, ascii = dump(gMemory, i, i+16)
-            print str.format('{0:04X}  {1}  {2}', i, s, ascii )
+            print(str.format('{0:04X}  {1}  {2}', i, s, ascii ))
         i += 0x10
 
 
@@ -727,4 +727,4 @@ if __name__ == '__main__':
         main( sys.argv )
     except:
         err = str.format( "Error: {0}", sys.exc_value )
-        print err
+        print(err)

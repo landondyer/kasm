@@ -66,8 +66,8 @@ def get( label ):
 
 def dumpSymbols():
     for scope in gSymbol:
-        print str.format("{0:20} {1}", scope, gSymbol[scope][scope] )
+        print(str.format("{0:20} {1}", scope, gSymbol[scope][scope] ))
         for localSymbol in gSymbol[scope]:
             if localSymbol != scope:
-                print str.format("    {0:20} {1}", localSymbol, gSymbol[scope][localSymbol] )
+                print(str.format("    {0:20} {1}", localSymbol, gSymbol[scope][localSymbol] ))
 

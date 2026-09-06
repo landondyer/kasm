@@ -4,6 +4,8 @@
 #   ABRMS license
 #
 
+import argparse
+import os
 import sys
 
 import tok
@@ -11,7 +13,6 @@ import eval
 import fileinput
 import symbols
 import traceback
-import re
 
 
 gListingFile = None
@@ -552,9 +553,9 @@ def assembleFile( filename ):
             
         try:
             gInput = fileinput.FileInput( filename )
-        except:
-            print("Error: {0}", sys.exc_value)
-            return
+        except Exception as e:
+            print( str.format( "Error: {0}", e ) )
+            return False
 
         gLoc = 0
 
@@ -564,11 +565,11 @@ def assembleFile( filename ):
                 if not line:
                     break
                 assembleLine( line, phase )
-        except:
+        except Exception as e:
             err = str.format("Error: {0}({1}): {2}",
                 gInput.file(),
                 gInput.line(),
-                sys.exc_value )
+                e )
             print(err)
             gotError = True
             # traceback.print_exc()
@@ -668,63 +669,47 @@ def dumpKim1Records( filename, startAddress=0 ):
     outputFile.close()
 
 
-gCommands = {
-    # 'foo': { 'handler': function, 'count': numberOfArguments }
-    }
+def deriveFilenames( source ):
+    """Map a source argument to its (source, listing, output) paths.
+
+    A source given without an extension gets '.asm'; the listing and
+    output files sit beside it with '.lst' and '.dat' extensions.
+    """
+    root, ext = os.path.splitext( source )
+    if not ext:
+        source = source + ".asm"
+        root = source[:-len( ".asm" )]
+
+    return source, root + ".lst", root + ".dat"
 
 
 def main( argv ):
-    global gCommands
     global gListingFile
-    
-    argno = 1
-    while argno < len( argv ):
 
-        arg = argv[argno].lower()
+    parser = argparse.ArgumentParser(
+        prog="kasm",
+        description="Simple 6502 assembler." )
+    parser.add_argument( "sources", metavar="SOURCE", nargs="+",
+        help="assembly source file (a '.asm' extension is assumed if none is given)" )
+    args = parser.parse_args( argv[1:] )
 
-        if arg in gCommands:
-            count = 0
-            if 'count' in gCommands[arg]:
-                count = gCommands[arg]['count']
-                if argno + count >= len( argv ):
-                    raise Exception( str.format( "Not enough arguments for {0}", arg ) )
+    failed = 0
+    for source in args.sources:
+        source, listingFile, outputFile = deriveFilenames( source )
 
-                args = argv[argno + 1 : argno + count + 1]
-                argno += count + 1
-                gCommands[arg]['handler'](*args)
-            else:
-                argno += 1
-                gCommands[arg]['handler']()
-                
-        elif arg.startswith( '-' ):
-            
-            raise Exception( str.format( "Unknown option {0}", arg ) )
+        gListingFile = open( listingFile, "w" )
 
+        if assembleFile( source ):
+            dumpKim1Records( outputFile )
         else:
-            
-            argno += 1
+            failed += 1
 
-            match = re.match( ".*\\.(.*)", arg )
-            if not match:
-                arg += ".asm"
-
-            match = re.match( "(.*\\.).*", arg )
-            if not match:
-                raise Exception( "internal error flogging filenames" )
-
-            baseFile = match.group(1)
-            listingFile = baseFile + "lst"
-            outputFile = baseFile + "dat"
-
-            gListingFile = open( listingFile, "w" )
-
-            if assembleFile( arg ):
-                dumpKim1Records( outputFile )
+    return 1 if failed else 0
 
 
 if __name__ == '__main__':
     try:
-        main( sys.argv )
-    except:
-        err = str.format( "Error: {0}", sys.exc_value )
-        print(err)
+        sys.exit( main( sys.argv ) )
+    except Exception as e:
+        print( str.format( "Error: {0}", e ) )
+        sys.exit( 1 )

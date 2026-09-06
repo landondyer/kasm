@@ -357,18 +357,18 @@ def test():
     brokenString( '\'foo' )
     brokenString( '\'foo\\' )
 
-    print tokenize( 'this is a test' )
-    print tokenize( 'label: adc a, #42' )
-    print tokenize( 'label: db "a string"' )
-    print tokenize( '\ttya' )
-    print tokenize( ' foo ; comment ' )
-    print tokenize( '1 << 8' )
+    print(tokenize( 'this is a test' ))
+    print(tokenize( 'label: adc a, #42' ))
+    print(tokenize( 'label: db "a string"' ))
+    print(tokenize( '\ttya' ))
+    print(tokenize( ' foo ; comment ' ))
+    print(tokenize( '1 << 8' ))
 
 
 def testTokenizer():
     def printTokens( tokenizer ):
         while not tokenizer.atEnd():
-            print tokenizer.curTok(), tokenizer.curValue()
+            print(tokenizer.curTok(), tokenizer.curValue())
             tokenizer.nextTok()
 
     printTokens( Tokenizer( "label: lda #0x42  ; get froggles" ) )

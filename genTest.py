@@ -101,7 +101,7 @@ UNDECIDED = 14
 def PrintTestVector():
 
     def emit( *args ):
-        print '\t' + ' '.join( args )
+        print('\t' + ' '.join( args ))
 
     def emitTestImplied( op ):
         emit( op )
@@ -172,9 +172,9 @@ def PrintTestVector():
         }
 
     def emitBoilerplate():
-        print "abs = 0x1234"
-        print "zp = 0x56"
-        print "rel: nop"
+        print("abs = 0x1234")
+        print("zp = 0x56")
+        print("rel: nop")
 
     emitBoilerplate()
 

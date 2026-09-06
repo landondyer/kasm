@@ -669,18 +669,36 @@ def dumpKim1Records( filename, startAddress=0 ):
     outputFile.close()
 
 
-def deriveFilenames( source ):
-    """Map a source argument to its (source, listing, output) paths.
+def dumpBinary( filename, start, end ):
+    """Write the inclusive memory range start..end to filename as raw bytes.
 
-    A source given without an extension gets '.asm'; the listing and
-    output files sit beside it with '.lst' and '.dat' extensions.
+    Cells that were never assigned are written as zero.
+    """
+    outputFile = open( filename, 'wb' )
+    outputFile.write( bytes( gMemory[i] or 0 for i in range( start, end + 1 ) ) )
+    outputFile.close()
+
+
+def deriveFilenames( source ):
+    """Map a source argument to its (source path, base name).
+
+    A source given without an extension gets '.asm'; output files are
+    named by appending '.lst', '.dat', '.bin', etc. to the base name.
     """
     root, ext = os.path.splitext( source )
     if not ext:
         source = source + ".asm"
         root = source[:-len( ".asm" )]
 
-    return source, root + ".lst", root + ".dat"
+    return source, root
+
+
+def parseAddress( text ):
+    """Parse a CLI address: '$1234' hex, or anything int(base=0) accepts."""
+    text = text.strip()
+    if text.startswith( '$' ):
+        return int( text[1:], 16 )
+    return int( text, 0 )
 
 
 def main( argv ):
@@ -691,18 +709,41 @@ def main( argv ):
         description="Simple 6502 assembler." )
     parser.add_argument( "sources", metavar="SOURCE", nargs="+",
         help="assembly source file (a '.asm' extension is assumed if none is given)" )
+    parser.add_argument( "--listing", action="store_true",
+        help="write a '.lst' listing file beside each source" )
+    parser.add_argument( "--kim1", action="store_true",
+        help="write a '.dat' file of KIM-1 paper-tape records beside each source" )
+    parser.add_argument( "--writebin", nargs=2, metavar=( "START", "END" ),
+        help="write the inclusive address range START..END as raw bytes to a "
+             "'.bin' file beside each source (addresses accept '$' or '0x' hex)" )
     args = parser.parse_args( argv[1:] )
+
+    binRange = None
+    if args.writebin:
+        try:
+            start, end = parseAddress( args.writebin[0] ), parseAddress( args.writebin[1] )
+        except ValueError:
+            parser.error( str.format( "--writebin: bad address in {0}", args.writebin ) )
+        if not 0 <= start <= end <= 0xffff:
+            parser.error( "--writebin: need 0 <= START <= END <= 0xffff" )
+        binRange = ( start, end )
 
     failed = 0
     for source in args.sources:
-        source, listingFile, outputFile = deriveFilenames( source )
+        source, base = deriveFilenames( source )
 
-        gListingFile = open( listingFile, "w" )
+        gListingFile = open( base + ".lst", "w" ) if args.listing else None
 
         if assembleFile( source ):
-            dumpKim1Records( outputFile )
+            if args.kim1:
+                dumpKim1Records( base + ".dat" )
+            if binRange:
+                dumpBinary( base + ".bin", binRange[0], binRange[1] )
         else:
             failed += 1
+
+        if gListingFile != None:
+            gListingFile.close()
 
     return 1 if failed else 0
 
